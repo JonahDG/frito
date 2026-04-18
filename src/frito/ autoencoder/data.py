@@ -57,7 +57,7 @@ def elliptical_polar(
     x_rot = xx * cos_pa + yy * sin_pa
     y_rot = -xx * sin_pa + yy * cos_pa
     y_scaled = y_rot / axis_ratio
-    r = np.sqrt(x_rot ** 2 + y_scaled ** 2)
+    r = np.sqrt(x_rot**2 + y_scaled**2)
     theta = np.arctan2(y_scaled, x_rot)
     return r, theta
 
@@ -117,7 +117,7 @@ def angular_asymmetry(
         mod = np.clip(mod, clip_min, None)
 
     if square:
-        mod = mod ** 2
+        mod = mod**2
 
     if normalize_mean:
         mod = mod / (mod.mean() + 1e-8)
@@ -182,8 +182,11 @@ def make_rings(
         ring_b_cos_list = [None] * n_rings
 
     for r0, w, amp, a_sin, b_cos in zip(
-        ring_radii, ring_widths, ring_amplitudes,
-        ring_a_sin_list, ring_b_cos_list,
+        ring_radii,
+        ring_widths,
+        ring_amplitudes,
+        ring_a_sin_list,
+        ring_b_cos_list,
     ):
         ring = amp * np.exp(-0.5 * ((r - r0) / w) ** 2)
         mod = angular_asymmetry(
@@ -394,7 +397,7 @@ def add_planet(
     py = pr * np.sin(planet_angle)
 
     planet = planet_amplitude * np.exp(
-        -((xx - px) ** 2 + (yy - py) ** 2) / (2 * planet_sigma ** 2)
+        -((xx - px) ** 2 + (yy - py) ** 2) / (2 * planet_sigma**2)
     )
 
     if remove:
@@ -479,7 +482,9 @@ def random_rings(key: jax.Array, size: int = 128) -> np.ndarray:
     k0, k1, k2, k3, k4, k5, *arm_keys = jr.split(key, 20)
 
     n_rings = int(jr.randint(k0, shape=(), minval=1, maxval=5))
-    ring_radii = np.sort(jr.uniform(k1, shape=(n_rings,), minval=0.1, maxval=0.9))
+    ring_radii = np.sort(
+        jr.uniform(k1, shape=(n_rings,), minval=0.1, maxval=0.9)
+    )
     ring_widths = jr.uniform(k2, shape=(n_rings,), minval=0.02, maxval=0.08)
     ring_amplitudes = jr.uniform(k3, shape=(n_rings,), minval=0.3, maxval=1.0)
     axis_ratio = float(jr.uniform(k4, minval=0.3, maxval=1.0))
@@ -489,7 +494,9 @@ def random_rings(key: jax.Array, size: int = 128) -> np.ndarray:
     ring_a_sin_list = []
     ring_b_cos_list = []
     for i in range(n_rings):
-        a, b = sample_fourier_coeffs(arm_keys[i + 1], max_modes=4, prob_nonzero=0.8)
+        a, b = sample_fourier_coeffs(
+            arm_keys[i + 1], max_modes=4, prob_nonzero=0.8
+        )
         ring_a_sin_list.append(a)
         ring_b_cos_list.append(b)
 
@@ -524,7 +531,9 @@ def random_spiral(key: jax.Array, size: int = 128) -> np.ndarray:
     k0, k1, k2, k3, k4, k5, k6, k7, k8, k9, *arm_keys = jr.split(key, 30)
 
     n_arms = int(jr.randint(k0, shape=(), minval=1, maxval=5))
-    arm_amplitudes = list(jr.uniform(k1, shape=(n_arms,), minval=0.3, maxval=1.5))
+    arm_amplitudes = list(
+        jr.uniform(k1, shape=(n_arms,), minval=0.3, maxval=1.5)
+    )
     axis_ratio = float(jr.uniform(k2, minval=0.3, maxval=1.0))
     position_angle = float(jr.uniform(k3, minval=0.0, maxval=2 * pi))
     disk_scale = float(jr.uniform(k4, minval=0.7, maxval=1.3))
@@ -552,8 +561,12 @@ def random_spiral(key: jax.Array, size: int = 128) -> np.ndarray:
         axis_ratio=axis_ratio,
         position_angle=position_angle,
         disk_scale=disk_scale,
-        spiral_peak_offset=float(jr.uniform(arm_keys[n_arms + 1], minval=0.05, maxval=0.2)),
-        spiral_radial_sigma=float(jr.uniform(arm_keys[n_arms + 2], minval=0.1, maxval=0.3)),
+        spiral_peak_offset=float(
+            jr.uniform(arm_keys[n_arms + 1], minval=0.05, maxval=0.2)
+        ),
+        spiral_radial_sigma=float(
+            jr.uniform(arm_keys[n_arms + 2], minval=0.1, maxval=0.3)
+        ),
         ring_a_sin=ring_a_sin,
         ring_b_cos=ring_b_cos,
         arm_a_sin_list=arm_a_sin_list,
@@ -704,9 +717,21 @@ def random_obj(
     keys = jr.split(key, 64)
 
     # Global disk geometry
-    disc_scale_val = float(jr.uniform(keys[0], minval=disc_scale[0], maxval=disc_scale[1]))
-    position_angle = float(jr.uniform(keys[1], minval=position_angle_range[0], maxval=position_angle_range[1]))
-    axis_ratio = float(jr.uniform(keys[2], minval=axis_ratio_range[0], maxval=axis_ratio_range[1]))
+    disc_scale_val = float(
+        jr.uniform(keys[0], minval=disc_scale[0], maxval=disc_scale[1])
+    )
+    position_angle = float(
+        jr.uniform(
+            keys[1],
+            minval=position_angle_range[0],
+            maxval=position_angle_range[1],
+        )
+    )
+    axis_ratio = float(
+        jr.uniform(
+            keys[2], minval=axis_ratio_range[0], maxval=axis_ratio_range[1]
+        )
+    )
     rings = bool(jr.bernoulli(keys[3], p=0.3))
 
     # Defaults
@@ -722,74 +747,212 @@ def random_obj(
 
     # Ring mode
     if rings:
-        n_rings = int(jr.randint(keys[4], shape=(), minval=ring_range[0], maxval=ring_range[1] + 1))
-        ring_radii = np.sort(jr.uniform(keys[5], shape=(n_rings,), minval=ring_radii_range[0], maxval=ring_radii_range[1]))
-        ring_widths = jr.uniform(keys[6], shape=(n_rings,), minval=ring_width_range[0], maxval=ring_width_range[1])
-        ring_amplitudes = jr.uniform(keys[7], shape=(n_rings,), minval=ring_amplitude_range[0], maxval=ring_amplitude_range[1])
+        n_rings = int(
+            jr.randint(
+                keys[4],
+                shape=(),
+                minval=ring_range[0],
+                maxval=ring_range[1] + 1,
+            )
+        )
+        ring_radii = np.sort(
+            jr.uniform(
+                keys[5],
+                shape=(n_rings,),
+                minval=ring_radii_range[0],
+                maxval=ring_radii_range[1],
+            )
+        )
+        ring_widths = jr.uniform(
+            keys[6],
+            shape=(n_rings,),
+            minval=ring_width_range[0],
+            maxval=ring_width_range[1],
+        )
+        ring_amplitudes = jr.uniform(
+            keys[7],
+            shape=(n_rings,),
+            minval=ring_amplitude_range[0],
+            maxval=ring_amplitude_range[1],
+        )
 
         if use_asymmetry:
             ring_a_sin_list, ring_b_cos_list = [], []
             asym_keys = jr.split(keys[8], max(n_rings, 1))
             for i in range(n_rings):
-                a, b = sample_fourier_coeffs(asym_keys[i], max_modes=max_fourier_modes, coeff_range=tuple(fourier_coeff_range), prob_nonzero=per_ring_asymmetry_prob)
+                a, b = sample_fourier_coeffs(
+                    asym_keys[i],
+                    max_modes=max_fourier_modes,
+                    coeff_range=tuple(fourier_coeff_range),
+                    prob_nonzero=per_ring_asymmetry_prob,
+                )
                 ring_a_sin_list.append(a)
                 ring_b_cos_list.append(b)
 
         image = make_rings(
-            size=size, disk_scale=disc_scale_val, position_angle=position_angle,
-            axis_ratio=axis_ratio, ring_radii=ring_radii, ring_widths=ring_widths,
-            ring_amplitudes=ring_amplitudes, ring_a_sin_list=ring_a_sin_list,
-            ring_b_cos_list=ring_b_cos_list, asymmetry_square=asymmetry_square,
+            size=size,
+            disk_scale=disc_scale_val,
+            position_angle=position_angle,
+            axis_ratio=axis_ratio,
+            ring_radii=ring_radii,
+            ring_widths=ring_widths,
+            ring_amplitudes=ring_amplitudes,
+            ring_a_sin_list=ring_a_sin_list,
+            ring_b_cos_list=ring_b_cos_list,
+            asymmetry_square=asymmetry_square,
         )
 
     # Spiral mode
     else:
-        ring_radius = float(jr.uniform(keys[9], minval=ring_radii_range[0], maxval=ring_radii_range[1]))
-        ring_width = float(jr.uniform(keys[10], minval=ring_width_range[0], maxval=ring_width_range[1]))
-        ring_amplitude = float(jr.uniform(keys[11], minval=ring_amplitude_range[0], maxval=ring_amplitude_range[1]))
-        n_arms = int(jr.randint(keys[12], shape=(), minval=arm_range[0], maxval=arm_range[1] + 1))
-        arm_width = float(jr.uniform(keys[13], minval=arm_width_range[0], maxval=arm_width_range[1]))
-        spiral_peak_offset_val = float(jr.uniform(keys[14], minval=spiral_peak_offset[0], maxval=spiral_peak_offset[1]))
-        spiral_radial_sigma_val = float(jr.uniform(keys[15], minval=spiral_radial_sigma[0], maxval=spiral_radial_sigma[1]))
-        pitch = float(jr.uniform(keys[16], minval=pitch_range[0], maxval=pitch_range[1]))
-        arm_amplitudes = jr.uniform(keys[17], shape=(n_arms,), minval=arm_amplitude_range[0], maxval=arm_amplitude_range[1]) if n_arms > 0 else np.zeros((0,))
+        ring_radius = float(
+            jr.uniform(
+                keys[9], minval=ring_radii_range[0], maxval=ring_radii_range[1]
+            )
+        )
+        ring_width = float(
+            jr.uniform(
+                keys[10], minval=ring_width_range[0], maxval=ring_width_range[1]
+            )
+        )
+        ring_amplitude = float(
+            jr.uniform(
+                keys[11],
+                minval=ring_amplitude_range[0],
+                maxval=ring_amplitude_range[1],
+            )
+        )
+        n_arms = int(
+            jr.randint(
+                keys[12], shape=(), minval=arm_range[0], maxval=arm_range[1] + 1
+            )
+        )
+        arm_width = float(
+            jr.uniform(
+                keys[13], minval=arm_width_range[0], maxval=arm_width_range[1]
+            )
+        )
+        spiral_peak_offset_val = float(
+            jr.uniform(
+                keys[14],
+                minval=spiral_peak_offset[0],
+                maxval=spiral_peak_offset[1],
+            )
+        )
+        spiral_radial_sigma_val = float(
+            jr.uniform(
+                keys[15],
+                minval=spiral_radial_sigma[0],
+                maxval=spiral_radial_sigma[1],
+            )
+        )
+        pitch = float(
+            jr.uniform(keys[16], minval=pitch_range[0], maxval=pitch_range[1])
+        )
+        arm_amplitudes = (
+            jr.uniform(
+                keys[17],
+                shape=(n_arms,),
+                minval=arm_amplitude_range[0],
+                maxval=arm_amplitude_range[1],
+            )
+            if n_arms > 0
+            else np.zeros((0,))
+        )
 
         if use_asymmetry:
-            ring_a_sin, ring_b_cos = sample_fourier_coeffs(keys[18], max_modes=max_fourier_modes, coeff_range=tuple(fourier_coeff_range), prob_nonzero=ring_base_asymmetry_prob)
+            ring_a_sin, ring_b_cos = sample_fourier_coeffs(
+                keys[18],
+                max_modes=max_fourier_modes,
+                coeff_range=tuple(fourier_coeff_range),
+                prob_nonzero=ring_base_asymmetry_prob,
+            )
             arm_a_sin_list, arm_b_cos_list = [], []
             if n_arms > 0:
                 arm_keys = jr.split(keys[19], n_arms)
                 for i in range(n_arms):
-                    a, b = sample_fourier_coeffs(arm_keys[i], max_modes=max_fourier_modes, coeff_range=tuple(fourier_coeff_range), prob_nonzero=per_arm_asymmetry_prob)
+                    a, b = sample_fourier_coeffs(
+                        arm_keys[i],
+                        max_modes=max_fourier_modes,
+                        coeff_range=tuple(fourier_coeff_range),
+                        prob_nonzero=per_arm_asymmetry_prob,
+                    )
                     arm_a_sin_list.append(a)
                     arm_b_cos_list.append(b)
 
         image = make_spiral(
-            size=size, disk_scale=disc_scale_val, position_angle=position_angle,
-            axis_ratio=axis_ratio, ring_radius=ring_radius, ring_width=ring_width,
-            ring_amplitude=ring_amplitude, n_arms=n_arms, arm_width=arm_width,
-            arm_amplitudes=arm_amplitudes, spiral_peak_offset=spiral_peak_offset_val,
-            spiral_radial_sigma=spiral_radial_sigma_val, pitch=pitch,
-            ring_a_sin=ring_a_sin, ring_b_cos=ring_b_cos,
-            arm_a_sin_list=arm_a_sin_list, arm_b_cos_list=arm_b_cos_list,
+            size=size,
+            disk_scale=disc_scale_val,
+            position_angle=position_angle,
+            axis_ratio=axis_ratio,
+            ring_radius=ring_radius,
+            ring_width=ring_width,
+            ring_amplitude=ring_amplitude,
+            n_arms=n_arms,
+            arm_width=arm_width,
+            arm_amplitudes=arm_amplitudes,
+            spiral_peak_offset=spiral_peak_offset_val,
+            spiral_radial_sigma=spiral_radial_sigma_val,
+            pitch=pitch,
+            ring_a_sin=ring_a_sin,
+            ring_b_cos=ring_b_cos,
+            arm_a_sin_list=arm_a_sin_list,
+            arm_b_cos_list=arm_b_cos_list,
             asymmetry_square=asymmetry_square,
         )
 
     # Planets
-    n_planets = int(jr.randint(keys[20], shape=(), minval=planets_range[0], maxval=planets_range[1] + 1))
-    planet_angular_positions = planet_orbital_radii = planet_amplitudes = planet_sigmas = None
+    n_planets = int(
+        jr.randint(
+            keys[20],
+            shape=(),
+            minval=planets_range[0],
+            maxval=planets_range[1] + 1,
+        )
+    )
+    planet_angular_positions = planet_orbital_radii = planet_amplitudes = (
+        planet_sigmas
+    ) = None
 
     if n_planets > 0:
-        planet_angular_positions = jr.uniform(keys[21], shape=(n_planets,), minval=planet_angular_position_range[0], maxval=planet_angular_position_range[1])
-        planet_orbital_radii = jr.uniform(keys[22], shape=(n_planets,), minval=planet_orbital_radius_range[0], maxval=planet_orbital_radius_range[1])
-        planet_amplitudes = jr.uniform(keys[23], shape=(n_planets,), minval=planet_amplitude_range[0], maxval=planet_amplitude_range[1])
-        planet_sigmas = jr.uniform(keys[24], shape=(n_planets,), minval=planet_sigma_range[0], maxval=planet_sigma_range[1])
+        planet_angular_positions = jr.uniform(
+            keys[21],
+            shape=(n_planets,),
+            minval=planet_angular_position_range[0],
+            maxval=planet_angular_position_range[1],
+        )
+        planet_orbital_radii = jr.uniform(
+            keys[22],
+            shape=(n_planets,),
+            minval=planet_orbital_radius_range[0],
+            maxval=planet_orbital_radius_range[1],
+        )
+        planet_amplitudes = jr.uniform(
+            keys[23],
+            shape=(n_planets,),
+            minval=planet_amplitude_range[0],
+            maxval=planet_amplitude_range[1],
+        )
+        planet_sigmas = jr.uniform(
+            keys[24],
+            shape=(n_planets,),
+            minval=planet_sigma_range[0],
+            maxval=planet_sigma_range[1],
+        )
 
-        for angle, radius, amp, sigma in zip(planet_angular_positions, planet_orbital_radii, planet_amplitudes, planet_sigmas):
+        for angle, radius, amp, sigma in zip(
+            planet_angular_positions,
+            planet_orbital_radii,
+            planet_amplitudes,
+            planet_sigmas,
+        ):
             image = add_planet(
-                image=image, planet_radius=float(radius), planet_angle=float(angle),
-                planet_amplitude=float(amp), planet_sigma=float(sigma),
-                disk_scale=disc_scale_val, cap_to_image_max=True,
+                image=image,
+                planet_radius=float(radius),
+                planet_angle=float(angle),
+                planet_amplitude=float(amp),
+                planet_sigma=float(sigma),
+                disk_scale=disc_scale_val,
+                cap_to_image_max=True,
             )
 
     # Blank image debug
@@ -798,19 +961,35 @@ def random_obj(
 
     if max_val < 1e-6:
         print("\n--- Blank image detected ---")
-        print(f"disc_scale: {disc_scale_val}, axis_ratio: {axis_ratio}, position_angle: {position_angle}")
+        print(
+            f"disc_scale: {disc_scale_val}, axis_ratio: {axis_ratio}, position_angle: {position_angle}"
+        )
         if rings:
-            print(f"RING MODE | n_rings: {n_rings} | radii: {ring_radii} | widths: {ring_widths} | amplitudes: {ring_amplitudes}")
-            print(f"ring_a_sin_list: {ring_a_sin_list} | ring_b_cos_list: {ring_b_cos_list}")
+            print(
+                f"RING MODE | n_rings: {n_rings} | radii: {ring_radii} | widths: {ring_widths} | amplitudes: {ring_amplitudes}"
+            )
+            print(
+                f"ring_a_sin_list: {ring_a_sin_list} | ring_b_cos_list: {ring_b_cos_list}"
+            )
         else:
-            print(f"SPIRAL MODE | ring_radius: {ring_radius} | ring_width: {ring_width} | ring_amplitude: {ring_amplitude}")
-            print(f"n_arms: {n_arms} | arm_width: {arm_width} | arm_amplitudes: {arm_amplitudes}")
-            print(f"spiral_peak_offset: {spiral_peak_offset_val} | spiral_radial_sigma: {spiral_radial_sigma_val} | pitch: {pitch}")
+            print(
+                f"SPIRAL MODE | ring_radius: {ring_radius} | ring_width: {ring_width} | ring_amplitude: {ring_amplitude}"
+            )
+            print(
+                f"n_arms: {n_arms} | arm_width: {arm_width} | arm_amplitudes: {arm_amplitudes}"
+            )
+            print(
+                f"spiral_peak_offset: {spiral_peak_offset_val} | spiral_radial_sigma: {spiral_radial_sigma_val} | pitch: {pitch}"
+            )
             print(f"ring_a_sin: {ring_a_sin} | ring_b_cos: {ring_b_cos}")
-            print(f"arm_a_sin_list: {arm_a_sin_list} | arm_b_cos_list: {arm_b_cos_list}")
+            print(
+                f"arm_a_sin_list: {arm_a_sin_list} | arm_b_cos_list: {arm_b_cos_list}"
+            )
         print(f"PLANETS | n_planets: {n_planets}")
         if n_planets > 0:
-            print(f"angles: {planet_angular_positions} | radii: {planet_orbital_radii} | amplitudes: {planet_amplitudes} | sigmas: {planet_sigmas}")
+            print(
+                f"angles: {planet_angular_positions} | radii: {planet_orbital_radii} | amplitudes: {planet_amplitudes} | sigmas: {planet_sigmas}"
+            )
         print(f"IMAGE STATS | min: {min_val} | max: {max_val}")
         print("----------------------------\n")
 
