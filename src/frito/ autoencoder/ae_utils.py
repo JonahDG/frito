@@ -27,9 +27,9 @@ def load_model(model_like: eqx.Module, path: str) -> eqx.Module:
 def load_data(
     path: str,
     train_key: str = "x_train",
-    val_key: str = "x_test",
+    test_key: str = "x_test",
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Load training and validation arrays from an ``.npz`` file.
+    """Load training and test arrays from an ``.npz`` file.
 
     Parameters
     ----------
@@ -38,15 +38,16 @@ def load_data(
         and relative paths.
     train_key : str, optional
         Key for the training array, by default ``'x_train'``.
-    val_key : str, optional
-        Key for the validation array, by default ``'x_test'``.
+    test_key : str, optional
+        Key for the test array, by default ``'x_test'``.
 
     Returns
     -------
     x_train : np.ndarray
         Training data array.
-    x_val : np.ndarray
-        Validation data array.
+    x_test : np.ndarray
+        Test data array. This data is doubly used for validation, but will not 
+        affect training only as save point for the models.
 
     Raises
     ------
@@ -60,11 +61,11 @@ def load_data(
         raise ValueError(f"Expected an .npz file, got '{ext}'.")
     data = np.load(path)
     keys = list(data.keys())
-    if train_key not in keys or val_key not in keys:
+    if train_key not in keys or test_key not in keys:
         raise ValueError(
-            f"Expected keys '{train_key}' and '{val_key}' in .npz file; found: {keys}."
+            f"Expected keys '{train_key}' and '{test_key}' in .npz file; found: {keys}."
         )
-    return data[train_key], data[val_key]
+    return data[train_key], data[test_key]
 
 
 def add_noise(
