@@ -6,7 +6,7 @@ import importlib
 import pkgutil
 from pathlib import Path
 
-from frito.autoencoder import io_utils
+from frito.autoencoder import ae_utils
 
 __all__ = []
 
