@@ -6,5 +6,6 @@ import importlib
 import importlib.metadata
 from typing import Any
 
-__version__ = importlib.metadata.version("frito")
 
+
+__version__ = importlib.metadata.version("frito")
