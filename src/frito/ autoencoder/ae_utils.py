@@ -24,7 +24,7 @@ def load_model(model_like: eqx.Module, path: str) -> eqx.Module:
         return eqx.tree_deserialise_leaves(model_like, f)
 
 
-def load_train_val(
+def load_data(
     path: str,
     train_key: str = "x_train",
     val_key: str = "x_test",
