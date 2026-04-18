@@ -6,6 +6,6 @@ Both `frito` and `dorito` are designed to interface with [`amigo`](https://githu
 
 Please refer to these publications for more detail on `amigo` and `dorito`: [amigo paper here](https://arxiv.org/abs/2510.09806), [dorito paper here](https://arxiv.org/abs/2510.10924).
 
-We are working hard to build out this package, add documentation, and create example notebooks.
+Working to build out this package, add documentation, and create example notebooks.
 
 Feel free to contact me (Jonah) at [jonah.goldfine@mq.edu.au](mailto:jonah.goldfine@mq.edu.au).
