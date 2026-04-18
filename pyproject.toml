@@ -1,13 +1,27 @@
 [project]
 name = "frito"
 version = "0.1.0"
-description = "Add your description here"
+description = "An extension of amigo and dorito for regularized image deconvolution for resolved sources using machine-learned latent spaces"
 readme = "README.md"
 authors = [
-    { name = "Jonah Goldfine", email = "jdg577@nyu.edu" }
+    { name = "Jonah Goldfine", email = "jonah.goldfine@mq.edu.au" }
 ]
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "amigo>=0.1.1",
+    "dlux>=0.14.1",
+    "dorito>=0.1",
+    "equinox>=0.13.6",
+    "jax>=0.10.0",
+    "jaxlib>=0.10.0",
+    "matplotlib>=3.10.8",
+    "zodiax>=0.4.1",
+]
+
+classifiers=[
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
 
 [project.scripts]
 frito = "frito:main"
