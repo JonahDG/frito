@@ -6,12 +6,12 @@ import importlib
 import importlib.metadata
 from typing import Any
 
-
 __version__ = importlib.metadata.version("frito")
 
+def __getattr__(name):
+    if name == "autoencoder":
+        return importlib.import_module(".autoencoder", package="frito")
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
-from . import autoencoder
-
-__all__ = [
-    autoencoder
-]
+def __dir__():
+    return ["autoencoder"] + list(globals().keys())
