@@ -46,7 +46,7 @@ def load_data(
     x_train : np.ndarray
         Training data array.
     x_test : np.ndarray
-        Test data array. This data is doubly used for validation, but will not 
+        Test data array. This data is doubly used for validation, but will not
         affect training only as save point for the models.
 
     Raises
