@@ -7,5 +7,11 @@ import importlib.metadata
 from typing import Any
 
 
-
 __version__ = importlib.metadata.version("frito")
+
+
+from . import autoencoder
+
+__all__ = [
+    autoencoder
+]
