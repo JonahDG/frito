@@ -10,8 +10,7 @@ wheels/
 .venv
 
 # data
-_data/jwst/
-_data/autoencoder/
+_data/
 
 # Other files
 _output/
