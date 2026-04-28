@@ -9,8 +9,5 @@ wheels/
 # Virtual environments
 .venv
 
-# data files
-_data/jwst/
-_data/autoencoder_data
-
-# Other Files
+# Other flies
+data/
