@@ -1,8 +1,9 @@
-    """Wrappers of dorito basis, models, and model fits
+"""Wrappers of dorito basis, models, and model fits
 
-    This module includes classes that work with an autoencoder basis with 
-    OI fits (discos). It wraps model_fits and models from dorito to do this.
-    """
+This module includes classes that work with an autoencoder basis with
+OI fits (discos). It wraps model_fits and models from dorito to do this.
+"""
+
 import equinox as eqx
 from jax import Array, numpy as np, tree as jtu
 from zodiax import Base
@@ -283,20 +284,20 @@ class TransformedResolvedDiscoModel(ResolvedDiscoModel):
     window: Array
 
     def __init__(
-            self,
-            ois: list,
-            distribution: Array,
-            basis: ImageBasis,
-            uv_npixels: int,
-            uv_pscale: float,
-            oversample: float = 1.0,
-            psf_pixel_scale: float = 0.065524085,
-            rotate: bool = False,
-            window: Array = None,
+        self,
+        ois: list,
+        distribution: Array,
+        basis: ImageBasis,
+        uv_npixels: int,
+        uv_pscale: float,
+        oversample: float = 1.0,
+        psf_pixel_scale: float = 0.065524085,
+        rotate: bool = False,
+        window: Array = None,
     ):
         def fn(x):
             if isinstance(x, Array):
-                if 'i' in x.dtype.str:
+                if "i" in x.dtype.str:
                     return x
                 return np.array(x, dtype=float)
             return x
@@ -316,8 +317,8 @@ class TransformedResolvedDiscoModel(ResolvedDiscoModel):
         params = {}
         for oi in ois:
             param_dict = oi.initialise_params(self, init_coeffs, self.basis)
-            key, _ = param_dict['log_dist']
-            param_dict['log_dist'] = (key, init_coeffs)
+            key, _ = param_dict["log_dist"]
+            param_dict["log_dist"] = (key, init_coeffs)
 
             for param, (key, value) in param_dict.items():
                 if param not in params:
@@ -450,7 +451,9 @@ class PointResolvedDiscoModel(TransformedResolvedDiscoModel):
 
         params = {}
         for oi in ois:
-            param_dict = oi.initialise_params(self, init_coeffs, self.basis, contrast)
+            param_dict = oi.initialise_params(
+                self, init_coeffs, self.basis, contrast
+            )
             for param, (key, value) in param_dict.items():
                 if param not in params:
                     params[param] = {}
