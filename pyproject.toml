@@ -8,14 +8,16 @@ authors = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-    "amigo>=0.1.1",
+    "amigo",
+    "astropy>=7.2.0",
     "dlux>=0.14.1",
-    "dorito>=0.1",
+    "dorito",
     "equinox>=0.13.6",
     "jax>=0.10.0",
     "jaxlib>=0.10.0",
     "kneed>=0.8.6",
     "matplotlib>=3.10.8",
+    "photutils>=3.0.0",
     "scikit-learn>=1.8.0",
     "zodiax>=0.4.1",
 ]
@@ -29,3 +31,7 @@ classifiers=[
 [build-system]
 requires = ["uv_build>=0.11.7,<0.12.0"]
 build-backend = "uv_build"
+
+[tool.uv.sources]
+amigo = { git = "https://github.com/LouisDesdoigts/amigo.git" }
+dorito = { git = "https://github.com/maxecharles/dorito.git" }
