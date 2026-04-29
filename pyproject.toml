@@ -18,6 +18,8 @@ dependencies = [
     "kneed>=0.8.6",
     "matplotlib>=3.10.8",
     "photutils>=3.0.0",
+    "pyehtplot",
+    "scienceplots>=2.2.1",
     "scikit-learn>=1.8.0",
     "zodiax>=0.4.1",
 ]
@@ -35,3 +37,4 @@ build-backend = "uv_build"
 [tool.uv.sources]
 amigo = { git = "https://github.com/LouisDesdoigts/amigo.git" }
 dorito = { git = "https://github.com/maxecharles/dorito.git" }
+pyehtplot = { git = "https://github.com/liamedeiros/ehtplot.git" }

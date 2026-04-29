@@ -84,7 +84,7 @@ class TransformedResolvedDiscoModel(ResolvedDiscoModel):
             for param, (key, value) in param_dict.items():
                 if param not in params:
                     params[param] = {}
-                param[param][key] = value
+                params[param][key] = value
         BaseModeller.__init__(self, params)
     
     def get_distribution(
