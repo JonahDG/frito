@@ -330,8 +330,8 @@ class TransformedResolvedDiscoModel(ResolvedDiscoModel):
         self,
         exposure,
         rotate: bool = None,
-        exponentiate: bool = True,
-        window: bool = True,
+        exponentiate: bool = False,
+        window: bool = False,
     ):
         """Reconstruct the brightness distribution for an exposure.
 
@@ -350,11 +350,11 @@ class TransformedResolvedDiscoModel(ResolvedDiscoModel):
             Whether to rotate the distribution to the exposure frame.
             If ``None`` (default), falls back to ``self.rotate``.
         exponentiate : bool, optional
-            If ``True`` (default), interpret the decoded values as
+            If ``True`` (False by Default), interpret the decoded values as
             ``log10`` brightness and return ``10 ** decoded``. If
             ``False``, return the decoded values directly.
         window : bool, optional
-            If ``True`` (default) and ``self.window`` is not ``None``,
+            If ``True`` (False by default) and ``self.window`` is not ``None``,
             multiply the distribution by the stored window mask.
 
         Returns
