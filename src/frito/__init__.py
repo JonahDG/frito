@@ -15,3 +15,9 @@ def __getattr__(name):
 
 def __dir__():
     return ["autoencoder"] + list(globals().keys())
+
+from .dorito_updates import (
+    TransformedResolvedDiscoModel,
+    AutoencoderBasis,
+    TransformedResolvedOIFit,
+)
