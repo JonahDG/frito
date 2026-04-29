@@ -20,4 +20,6 @@ from .dorito_updates import (
     TransformedResolvedDiscoModel,
     AutoencoderBasis,
     TransformedResolvedOIFit,
+    PointResolvedOIFit,
+    PointResolvedDiscoModel
 )
