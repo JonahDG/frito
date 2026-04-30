@@ -23,3 +23,5 @@ from .dorito_updates import (
     PointResolvedOIFit,
     PointResolvedDiscoModel
 )
+
+from . import utils
