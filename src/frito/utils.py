@@ -7,6 +7,12 @@ from jax import numpy as np, Array, random as jr
 from jax.experimental import checkify
 
 # ============================================================================ #
+# Variables
+# ============================================================================ #
+
+mas2rad = np.pi / (180.0 * 3600.0 * 1000.0)
+
+# ============================================================================ #
 # Path utilities
 # ============================================================================ #
 
@@ -43,6 +49,10 @@ def load_disco(path: str | Path) -> dict:
     filter1 = list(filters)[0]
     disco_keys = data[filter1].keys()
     return data, filters, disco_keys
+
+# ============================================================================ #
+# Image Handling utilities
+# ============================================================================ #
 
 def normalize_image(img: np.ndarray) -> np.ndarray:
     img = np.asarray(img, dtype=np.float64)
