@@ -32,3 +32,10 @@ def _makedirs(path: str) -> None:
         File path whose parent directories should be created.
     """
     os.makedirs(os.path.dirname(_resolve(path)) or ".", exist_ok=True)
+
+def load_disco(path: str | Path) -> dict:
+    data = np.load(path, allow_pickle=True).item()
+    filters = data.keys()
+    filter1 = list(filters)[0]
+    disco_keys = data[filter1].keys()
+    return data, filters, disco_keys
