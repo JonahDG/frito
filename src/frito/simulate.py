@@ -7,11 +7,6 @@ from jax.experimental import checkify
 
 from .utils import mas2rad, normalize_image, load_disco
 
-__all__ = [
-    image2ComplexVis,
-    observables_from_image,
-    inject_image
-]
 
 def _image_pixel_grid_rad(n_rows: int, n_cols: int, pscale_mas: float=16.4) -> tuple[np.ndarray, np.ndarray]:
     def half(n: int):
