@@ -25,3 +25,5 @@ from .dorito_updates import (
 )
 
 from . import utils
+
+from . import simulate.*
