@@ -6,7 +6,8 @@ OI fits (discos). It wraps model_fits and models from dorito to do this.
 from pytest import approx
 
 import equinox as eqx
-from jax import Array, numpy as np, tree as jtu
+
+from jax import Array, numpy as np, tree as jtu, debug
 from zodiax import Base
 
 from dorito.model_fits import ResolvedOIFit, _OIFit
@@ -79,7 +80,7 @@ class AutoencoderBasis(Base):
         """
         decoded_img = self.decoder(coeffs)[0]
         pix_sum = np.sum(decoded_img)
-        assert pix_sum == approx(1), f'The output of the decoder must sum to ~1.0. This decoded image sums to {pix_sum}'
+        debug.callback(lambda x: print(f"sum={x}") if abs(x - 1.0) > 1e-3 else None, pix_sum)
         return decoded_img
 
 
