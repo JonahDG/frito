@@ -3,6 +3,7 @@
 This module includes classes that work with an autoencoder basis with
 OI fits (discos). It wraps model_fits and models from dorito to do this.
 """
+from pytest import approx
 
 import equinox as eqx
 from jax import Array, numpy as np, tree as jtu
@@ -76,7 +77,10 @@ class AutoencoderBasis(Base):
             Reconstructed image of shape ``(H, W)``. The leading batch
             dimension produced by the decoder is squeezed out.
         """
-        return self.decoder(coeffs)[0]
+        decoded_img = self.decoder(coeffs)[0]
+        pix_sum = np.sum(decoded_img)
+        assert pix_sum == approx(1), f'The output of the decoder must sum to ~1.0. This decoded image sums to {pix_sum}'
+        return decoded_img
 
 
 class TransformedResolvedOIFit(ResolvedOIFit):

@@ -50,3 +50,4 @@ def normalize_image(img: np.ndarray) -> np.ndarray:
     s = img.sum()
     checkify.check(s > 0, "Image has non-positive total flux")
     return img / s
+
