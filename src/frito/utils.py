@@ -49,5 +49,7 @@ def normalize_image(img: np.ndarray) -> np.ndarray:
     checkify.check(img.ndim == 2, f'Image must be 2-D, got shape {img.shape}')
     s = img.sum()
     checkify.check(s > 0, "Image has non-positive total flux")
-    return img / s
+    norm_img = img / s
+    norm_img = norm_img.astype(np.float64)
+    return norm_img
 
