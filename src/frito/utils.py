@@ -1,6 +1,10 @@
 import os
 from typing import Tuple
+from pathlib import Path
 
+import jax
+from jax import numpy as np, Array, random as jr
+from jax.experimental import checkify
 
 # ============================================================================ #
 # Path utilities
@@ -39,3 +43,10 @@ def load_disco(path: str | Path) -> dict:
     filter1 = list(filters)[0]
     disco_keys = data[filter1].keys()
     return data, filters, disco_keys
+
+def normalize_image(img: np.ndarray) -> np.ndarray:
+    img = np.asarray(img, dtype=np.float64)
+    checkify.check(img.ndim == 2, f'Image must be 2-D, got shape {img.shape}')
+    s = img.sum()
+    checkify.check(s > 0, "Image has non-positive total flux")
+    return img / s
