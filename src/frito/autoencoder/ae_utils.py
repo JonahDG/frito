@@ -11,7 +11,6 @@ import equinox as eqx
 from frito.utils import _resolve, _makedirs
 
 
-
 def save_model(model: eqx.Module, path: str) -> None:
     _makedirs(path)
     with open(path, "wb") as f:
@@ -181,17 +180,54 @@ def load_classes_from_file(filepath: str) -> dict:
         if cls.__module__ == module.__name__
     }
 
+
 def run_svd(
-        model_structure: str | Path, trained_model: str | Path,
-        data_path: str | Path, svd_file_dir: str | Path, svd_file_name: str,
-        batch_size: int=250, key: Array=jr.key(0)
+    model_structure: str | Path,
+    trained_model: str | Path,
+    data_path: str | Path,
+    svd_file_dir: str | Path,
+    svd_file_name: str,
+    batch_size: int = 250,
+    key: Array = jr.key(0),
 ):
+    if model_structure[-3:] != ".py":
+        raise NameError(
+            f"Model Structure is expected to be stored in a .py script. This ends in {model_structure[-3:]}."
+        )
+    if trained_model[-4:] != ".eqx":
+        raise NameError(
+            f"The Trained Model is expected to be a .eqx PyTree. This ends in {trained_model[-4:]}."
+        )
+    if svd_file_name[-4:] != ".npz":
+        raise NameError(
+            f'The Name of the SVD File expects to end in ".npz". This ends in {svd_file_name[-4:]}'
+        )
     svd_file_path = os.path.join(svd_file_dir, svd_file_name)
 
+    data, _ = load_data(data_path)
+    data = np.clip(data, min=1e-8)
+
     autoencoder_classes = load_classes_from_file(model_structure)
-    autoencoder = autoencoder_classes['autoencoder'](key=key)
+    autoencoder = autoencoder_classes["autoencoder"](key=key)
 
-    trained_autoencoder = eqx.tree_deserialise_leaves(trained_model, autoencoder)
+    trained_autoencoder = eqx.tree_deserialise_leaves(
+        trained_model, autoencoder
+    )
+    encoder, decoder = trained_autoencoder.modules
 
+    def encode_batch(batch):
+        return jax.vmap(encoder)(batch)
 
-    
+    latents = []
+
+    for i in range(0, len(data), batch_size):
+        batch = data[i, i + batch_size]
+        batch = batch.reshape(-1, 1, 51, 51)
+        latents.append(encode_batch(batch))
+    train_latents = np.concatenate(latents)
+
+    train_latents_mean = np.mean(train_latents, axis=0)
+    train_latents_centered = train_latents - train_latents_mean
+    u, s, v = np.linalg.svd(train_latents_centered, full_matrices=False)
+
+    np.savez(svd_file_path, u=u, s=s, v=v, mean=train_latents_mean)
