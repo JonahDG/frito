@@ -10,7 +10,6 @@ import equinox as eqx
 
 from frito.utils import _resolve, _makedirs
 
-from frito.utils import _resolve, _makedirs
 
 
 def save_model(model: eqx.Module, path: str) -> None:
@@ -181,3 +180,18 @@ def load_classes_from_file(filepath: str) -> dict:
         for name, cls in inspect.getmembers(module, inspect.isclass)
         if cls.__module__ == module.__name__
     }
+
+def run_svd(
+        model_structure: str | Path, trained_model: str | Path,
+        data_path: str | Path, svd_file_dir: str | Path, svd_file_name: str,
+        batch_size: int=250, key: Array=jr.key(0)
+):
+    svd_file_path = os.path.join(svd_file_dir, svd_file_name)
+
+    autoencoder_classes = load_classes_from_file(model_structure)
+    autoencoder = autoencoder_classes['autoencoder'](key=key)
+
+    trained_autoencoder = eqx.tree_deserialise_leaves(trained_model, autoencoder)
+
+
+    
