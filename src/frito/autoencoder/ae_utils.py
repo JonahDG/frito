@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Tuple, Union
 
 import jax
-import jax.numpy as np
+from jax import numpy as np, random as jr, Array
 import equinox as eqx
 
 from frito.utils import _resolve, _makedirs
