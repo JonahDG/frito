@@ -80,7 +80,7 @@ class AutoencoderBasis(Base):
         """
         decoded_img = self.decoder(coeffs)[0]
         pix_sum = np.sum(decoded_img)
-        debug.callback(lambda x: print(f"sum={x}") if abs(x - 1.0) > 1e-3 else None, pix_sum)
+        debug.callback(lambda x: print(f"sum={x}") if abs(x - 1.0) < 1e-3 else None, pix_sum)
         return decoded_img
 
 

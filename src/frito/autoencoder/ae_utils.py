@@ -219,10 +219,9 @@ def run_svd(
         return jax.vmap(encoder)(batch)
 
     latents = []
-
     for i in range(0, len(data), batch_size):
-        batch = data[i, i + batch_size]
-        batch = batch.reshape(-1, 1, 51, 51)
+        batch = data[i:i + batch_size]
+        batch = batch.reshape(-1, 1, batch.shape[-1], batch.shape[-2])
         latents.append(encode_batch(batch))
     train_latents = np.concatenate(latents)
 

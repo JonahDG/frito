@@ -60,12 +60,12 @@ def observables_from_image(img: np.ndarray, filter_block: dict, pscale_mas: floa
     
     return dict(vis=vis, phi=phi, K_vis=K_vis, K_phi=K_phi, O_vis=O_vis, O_phi=O_phi)
 
-def _draw_correlated_noise(cov: np.ndarray, key: Array=jr.key(0)) -> np.ndarray:
+def _draw_correlated_noise(cov: np.ndarray, key: Array=jr.key(0)) -> np.ndarray: 
     C = 0.5 * (cov + cov.T)
     w, V = np.linalg.eigh(C)
     w_clipped = np.clip(w, 0.0, None)
     L = V * np.sqrt(w_clipped)
-    z = jr.normal(key=key, shape=C.shape[0])
+    z = jr.normal(key=key, shape=C.shape[0]) #sqrt diagcov *1d array
     return L @ z
 
 def inject_image(disco_template: dict, img: np.ndarray, pscale_mas: float=16.4, flux_scale: float=1.0, add_noise: bool=True, scale_noise_w_flux: bool=False, key: Array=jr.key(0)):
@@ -100,7 +100,7 @@ def inject_image(disco_template: dict, img: np.ndarray, pscale_mas: float=16.4, 
                 ("O_vis", "O_vis_cov"), ("O_phi", "O_phi_cov")
             ]:
                 cov = new_disco_filter[disco_cov_key]
-                noise = _draw_correlated_noise(cov, key)
+                noise = _draw_correlated_noise(cov, key) # fix noise 
                 new_disco_filter[disco_key] = new_disco_filter[disco_key] + noise
             
         out[filter] = new_disco_filter

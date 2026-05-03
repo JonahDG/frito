@@ -24,4 +24,4 @@ from .dorito_updates import (
     PointResolvedDiscoModel
 )
 
-from . import utils. 
+from . import utils
