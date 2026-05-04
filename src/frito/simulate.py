@@ -19,7 +19,7 @@ def _image_pixel_grid_rad(n_rows: int, n_cols: int, pscale_mas: float=16.4) -> t
     return alpha, delta
 
 def image2ComplexVis(img: np.ndarray, u: np.ndarray, v: np.ndarray, wavel: float, pscale_mas: float=16.4) -> np.ndarray:
-    checkify.check(img.ndim == 2, f"Image must be 2-D, got shape {img.shape}")
+    # checkify.check(img.ndim == 2, f"Image must be 2-D, got shape {img.shape}")
 
     n_rows, n_cols = img.shape
     alpha, delta = _image_pixel_grid_rad(n_rows, n_cols, pscale_mas)

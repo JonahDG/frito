@@ -1,4 +1,5 @@
 import jax
+from jax import numpy as np
 import equinox as eqx
 # ============================================================================ #
 # Encode
@@ -73,7 +74,10 @@ class decoder(eqx.Module):
             eqx.nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=1, padding=1, key=keys[4]),
             jax.nn.relu,
             eqx.nn.Conv2d(in_channels=32, out_channels=1, kernel_size=3, stride=1, padding=1, key=keys[5]),
-            jax.nn.sigmoid
+            jax.nn.sigmoid,
+            # eqx.nn.Lambda(lambda z: z/np.sum(z, axis = (-2,-1), keepdims=True))
+            # eqx.nn.Lambda(lambda z: z / np.sum(z, axis=(1, 2), keepdims=True)),
+
         ]
     def __call__(self, x):
         for layer in self.layers:
