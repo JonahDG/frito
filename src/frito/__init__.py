@@ -21,7 +21,11 @@ from .dorito_updates import (
     AutoencoderBasis,
     TransformedResolvedOIFit,
     PointResolvedOIFit,
-    PointResolvedDiscoModel
+    PointResolvedDiscoModel,
+    latent_gaussian_prior,
+    disco_regularised_loss_forecast_fn,
+    oi_log_likelihood_forecast,
 )
 
 from . import utils
+from . import jax_gaussian

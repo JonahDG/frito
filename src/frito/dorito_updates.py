@@ -11,6 +11,7 @@ from jax import Array, numpy as np, tree as jtu, debug
 from zodiax import Base
 
 from dorito.model_fits import ResolvedOIFit, _OIFit
+from dorito.stats import apply_regularisers
 from dorito.models import ResolvedDiscoModel
 from dorito.bases import ImageBasis
 
@@ -78,10 +79,12 @@ class AutoencoderBasis(Base):
             Reconstructed image of shape ``(H, W)``. The leading batch
             dimension produced by the decoder is squeezed out.
         """
-        decoded_img = self.decoder(coeffs)[0]
-        pix_sum = np.sum(decoded_img)
+        
+        decoded_img = self.decoder(coeffs)
+        # pix_sum = np.sum(decoded_img)
         # debug.callback(lambda x: print(f"sum={x}") if abs(x - 1.0) < 1e-3 else None, pix_sum)
-        return decoded_img
+        return decoded_img[0]
+
 
 
 class TransformedResolvedOIFit(ResolvedOIFit):
@@ -369,10 +372,9 @@ class TransformedResolvedDiscoModel(ResolvedDiscoModel):
         """
         coeffs = self.params["log_dist"][exposure.get_key("log_dist")]
 
+        distribution = self.basis.from_basis(coeffs)
         if exponentiate:
-            distribution = 10 ** self.basis.from_basis(coeffs)
-        else:
-            distribution = self.basis.from_basis(coeffs)
+            distribution = 10 ** distribution
 
         if self.window is not None and window:
             distribution *= self.window
@@ -464,3 +466,38 @@ class PointResolvedDiscoModel(TransformedResolvedDiscoModel):
                     params[param] = {}
                 params[param][key] = value
         BaseModeller.__init__(self, params)
+
+def latent_gaussian_prior(model, exposure):
+    """Unit Gaussian prior on the (SVD-normalised) latent for this exposure's filter."""
+    z = model.params["log_dist"][exposure.get_key("log_dist")]
+    return 0.5 * np.sum(z ** 2)
+
+def disco_regularised_loss_forecast_fn(model, exposure, forecast, args={"reg_dict": {}}):
+
+    # regular likelihood term
+    likelihood = oi_log_likelihood_forecast(model, exposure, forecast)
+
+    # grabbing and exponentiating log distributions
+    prior = apply_regularisers(model, exposure, args)
+
+    return likelihood + prior, ()
+
+
+def oi_log_likelihood_forecast(model, oi, forecast):
+    """Compute a Gaussian negative log-likelihood for OI data. for BFGS after gradietn descent
+
+    Parameters
+    ----------
+    model : object
+        Model object callable as ``oi(model)`` to return model predictions.
+    oi : object
+        Object exposing ``vis``, ``phi``, ``d_vis`` and ``d_phi`` arrays.
+    """
+    data = forecast
+    err = np.concatenate([oi.d_vis, oi.d_phi])
+    model_vis = oi(model)
+
+    residual = data - model_vis
+    nll = np.sum(0.5 * (residual / err) ** 2 + np.log(err * np.sqrt(2 * np.pi)))
+
+    return nll
