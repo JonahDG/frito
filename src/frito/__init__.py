@@ -29,3 +29,4 @@ from .dorito_updates import (
 
 from . import utils
 from . import jax_gaussian
+from . import plot

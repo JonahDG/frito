@@ -10,9 +10,10 @@ requires-python = ">=3.11"
 dependencies = [
     "amigo",
     "astropy>=7.2.0",
-    "dlux>=0.14.1",
+    "cmasher>=1.9.2",
+    "dlux>=0.14.3",
     "dorito",
-    "equinox>=0.13.6",
+    "equinox>=0.13.7",
     "jax>=0.10.0",
     "jaxlib>=0.10.0",
     "kneed>=0.8.6",

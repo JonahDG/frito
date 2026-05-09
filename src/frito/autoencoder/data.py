@@ -997,3 +997,35 @@ def random_obj(
         image = image / image.max()
 
     return image
+
+def bin_down(img, size=51, power_val=1.25, power_start=0.6):
+    assert img.shape == (101,101)
+    core = img[:100, :100].reshape(50, 2, 50, 2).sum(axis=(1, 3))
+
+    # Last row and column
+    last_row = img[100, :100].reshape(50, 2).sum(axis=1)
+    last_col = img[:100, 100].reshape(50, 2).sum(axis=1)
+
+    # Assemble output
+    out = np.zeros((51, 51), dtype=img.dtype)
+    out = out.at[:50, :50].set(core)
+    out = out.at[50, :50].set(last_row)
+    out = out.at[:50, 50].set(last_col)
+    out = out.at[50, 50].set(img[100, 100])
+
+    if power_val > 0 and power_start > 0:
+        xx, yy = make_coordinate_grid(size)
+        r_edge = np.sqrt(xx**2 + yy**2)
+        r_max = r_edge.max()
+        t = r_edge / r_max
+
+        taper = np.where(
+            t < power_start,
+            1.0,
+            (1 - (t - power_start) / (1 - power_start)) ** power_val
+        )
+        taper = np.clip(taper, 0.0, 1.0)
+        out = out * taper
+
+        out /= np.max(out)
+    return out

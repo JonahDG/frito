@@ -160,12 +160,38 @@ wheels = [
 ]
 
 [[package]]
+name = "cmasher"
+version = "1.9.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorspacious" },
+    { name = "matplotlib" },
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/2f/ca/39152b506133881be74bd46cced27ec10d9bbc85db5bdfc22c8f8e4011f9/cmasher-1.9.2.tar.gz", hash = "sha256:6c90c2cec87146e3210d3e7f2321fceee38ac7d87c136cd0de25160a14f57ff5", size = 520860, upload-time = "2024-11-19T11:17:02.084Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/91/d2/6fcb93a60777fef7662d84ba60846d2dee9b6b70b4a62472515110f79cee/cmasher-1.9.2-py3-none-any.whl", hash = "sha256:2fe45fde06051050dda5c023a527ba9066ca21f161c793f22839a6ebe6e4bbbb", size = 506496, upload-time = "2024-11-19T11:16:58.549Z" },
+]
+
+[[package]]
 name = "colorama"
 version = "0.4.6"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d8/53/6f443c9a4a8358a93a6792e2acffb9d9d5cb0a5cfd8802644b7b1c9a02e4/colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44", size = 27697, upload-time = "2022-10-25T02:36:22.414Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6", size = 25335, upload-time = "2022-10-25T02:36:20.889Z" },
+]
+
+[[package]]
+name = "colorspacious"
+version = "1.1.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/75/e4/aa41ae14c5c061205715006c8834496d86ec7500f1edda5981f0f0190cc6/colorspacious-1.1.2.tar.gz", hash = "sha256:5e9072e8cdca889dac445c35c9362a22ccf758e97b00b79ff0d5a7ba3e11b618", size = 688573, upload-time = "2018-04-08T04:27:30.83Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ab/a1/318b9aeca7b9856410ededa4f52d6f82174d1a41e64bdd70d951e532675a/colorspacious-1.1.2-py2.py3-none-any.whl", hash = "sha256:c78befa603cea5dccb332464e7dd29e96469eebf6cd5133029153d1e69e3fd6f", size = 37735, upload-time = "2018-04-08T04:27:22.143Z" },
 ]
 
 [[package]]
@@ -392,16 +418,17 @@ wheels = [
 
 [[package]]
 name = "dlux"
-version = "0.14.1"
+version = "0.14.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "interpax" },
     { name = "jax" },
     { name = "jaxlib" },
     { name = "zodiax" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fd/17/50137ddb6c8b67fce9ba7cab25d1e49091f7b055c7c24410effbce3ad1b4/dlux-0.14.1.tar.gz", hash = "sha256:2d6f209768133bea77bbc86ec7bb9464817f00e28ff08adb3d1d009269d0ab72", size = 62871, upload-time = "2025-10-13T16:25:36.296Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/56/28/e327b3afea496b899985217b0308dcdb04496a7eb5f993412d927ef0b4c0/dlux-0.14.3.tar.gz", hash = "sha256:ec34d14b908f262538d783a9b7d8655d35a0644e00cc6f6c7769437c84ba1065", size = 54671, upload-time = "2026-04-21T09:32:45.498Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4b/9d/0d6f10de816b439c09d5e9725a9c68bde9fe12573a3d8e9c76053cc7d3e5/dlux-0.14.1-py3-none-any.whl", hash = "sha256:17ed5b33f7fe47ffe25b9877f98451663885bd082a4fb72e724406bda092ccef", size = 68903, upload-time = "2025-10-13T16:25:35.203Z" },
+    { url = "https://files.pythonhosted.org/packages/04/4d/88f141c026f88e1fbbaf0711bdcadb34507cb1c986bd6ce5c80adeb161c4/dlux-0.14.3-py3-none-any.whl", hash = "sha256:c97a743836999b5f1896c63f8e27dc1ffb59a3f67ac6c6f18d6db89b27f93505", size = 60377, upload-time = "2026-04-21T09:32:43.926Z" },
 ]
 
 [[package]]
@@ -419,7 +446,7 @@ dependencies = [
 
 [[package]]
 name = "equinox"
-version = "0.13.6"
+version = "0.13.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jax" },
@@ -427,9 +454,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "wadler-lindig" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8c/b3/ab523b630e55f7038360f962c17b4a3a438850796d7f64f1e3c6e188775f/equinox-0.13.6.tar.gz", hash = "sha256:27529bb24fde117a0e976fca8027642eb1c8559e9445fb8d527792f64c74855a", size = 141923, upload-time = "2026-03-09T19:03:39.12Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/19/ff/522336d2f8264f2ad97119710b76e2cddf66145d03a1e89899175d26b192/equinox-0.13.8.tar.gz", hash = "sha256:dd075050018e2dd02e252e9d29d3060f7e67f085622d8d27a8e89e24bb8523db", size = 145257, upload-time = "2026-05-05T10:03:43.258Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4f/e9/3759a02b0307fdbbb201d8a2b00e192a24cac86b1db9bd3bfa1cbbb9decc/equinox-0.13.6-py3-none-any.whl", hash = "sha256:e01f6bee9d2fb9a1a51d8b34af3b70476a4727097b46b1115f36432b2488f4a0", size = 182056, upload-time = "2026-03-09T19:03:37.742Z" },
+    { url = "https://files.pythonhosted.org/packages/ae/d6/69a76c8ccdef14af687c497040292a46e59fc7a0ab24724b60e50ca61030/equinox-0.13.8-py3-none-any.whl", hash = "sha256:ca004348533cc30a63ebe8823d7dd4bb626dce17743d40bbddb89b402ef2a240", size = 185813, upload-time = "2026-05-05T10:03:41.673Z" },
 ]
 
 [[package]]
@@ -506,6 +533,7 @@ source = { editable = "." }
 dependencies = [
     { name = "amigo" },
     { name = "astropy" },
+    { name = "cmasher" },
     { name = "dlux" },
     { name = "dorito" },
     { name = "equinox" },
@@ -525,9 +553,10 @@ dependencies = [
 requires-dist = [
     { name = "amigo", git = "https://github.com/LouisDesdoigts/amigo.git" },
     { name = "astropy", specifier = ">=7.2.0" },
-    { name = "dlux", specifier = ">=0.14.1" },
+    { name = "cmasher", specifier = ">=1.9.2" },
+    { name = "dlux", specifier = ">=0.14.3" },
     { name = "dorito", git = "https://github.com/maxecharles/dorito.git" },
-    { name = "equinox", specifier = ">=0.13.6" },
+    { name = "equinox", specifier = ">=0.13.7" },
     { name = "jax", specifier = ">=0.10.0" },
     { name = "jaxlib", specifier = ">=0.10.0" },
     { name = "kneed", specifier = ">=0.8.6" },
