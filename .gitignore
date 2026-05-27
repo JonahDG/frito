@@ -14,7 +14,9 @@ _data/
 
 # Output
 _output/
+_plots/
 
 # Other
 amigo/
 dorito/
+cache/

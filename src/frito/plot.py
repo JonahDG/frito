@@ -50,6 +50,7 @@ def main_mosaic(
     roll_angle_degrees: float | None = None,
     diff_lim: float | None = None,
     scale: float | None = None,
+    ticks: list | None = None,
     save: None | str = None,
 ):
     """
@@ -149,10 +150,14 @@ def main_mosaic(
     if diff_lim is not None:
         common['diff_lim'] = diff_lim
     else:
-        common['diff_lim'] = dlu.rad2arcsec(ois[0].wavel / optics_diam)
+        common['diff_lim'] = dlu.rad2arcsec(ois[0].wavel / optics_diam)/2
     
     if scale is not None:
         common['scale'] = scale
+    if ticks is not None:
+        common['ticks'] = ticks
+    else:
+        common['ticks'] = [0.5, 0, -0.5]
 
     # Get history data
     log_dist_history = deconvolution_result.history["log_dist"][filter]
