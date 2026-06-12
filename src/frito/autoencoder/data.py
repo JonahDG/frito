@@ -1,9 +1,7 @@
-import jax
-import jax.random as jr
-import jax.numpy as np
-from math import pi
-from typing import List, Optional, Tuple
 
+# ---------------------------------------------------------------------------
+# Geometry helpers
+# ---------------------------------------------------------------------------
 
 def make_coordinate_grid(size: int) -> Tuple[np.ndarray, np.ndarray]:
     """Return a centered coordinate grid in range ``[-1, 1]``.
@@ -15,10 +13,8 @@ def make_coordinate_grid(size: int) -> Tuple[np.ndarray, np.ndarray]:
 
     Returns
     -------
-    xx : np.ndarray
-        2D array of x coordinates, shape ``(size, size)``.
-    yy : np.ndarray
-        2D array of y coordinates, shape ``(size, size)``.
+    xx, yy : np.ndarray
+        2D arrays of shape ``(size, size)``.
     """
     y = np.linspace(-1, 1, size)
     x = np.linspace(-1, 1, size)
@@ -32,26 +28,7 @@ def elliptical_polar(
     axis_ratio: float = 1.0,
     position_angle: float = 0.0,
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Convert Cartesian coordinates to elliptical polar coordinates.
-
-    Parameters
-    ----------
-    xx : np.ndarray
-        2D array of x coordinates.
-    yy : np.ndarray
-        2D array of y coordinates.
-    axis_ratio : float, optional
-        Ratio of minor to major axis. Default is ``1.0`` (circular).
-    position_angle : float, optional
-        Position angle of the major axis in radians. Default is ``0.0``.
-
-    Returns
-    -------
-    r : np.ndarray
-        Elliptical radius at each grid point.
-    theta : np.ndarray
-        Azimuthal angle at each grid point in radians.
-    """
+    """Convert Cartesian coordinates to elliptical polar coordinates."""
     cos_pa = np.cos(position_angle)
     sin_pa = np.sin(position_angle)
     x_rot = xx * cos_pa + yy * sin_pa
@@ -70,34 +47,7 @@ def angular_asymmetry(
     normalize_mean: bool = True,
     clip_min: float = 0.0,
 ) -> np.ndarray:
-    """Compute an angular modulation map from Fourier coefficients.
-
-    Parameters
-    ----------
-    theta : np.ndarray
-        2D array of azimuthal angles in radians.
-    a_sin : list of float, optional
-        Sine Fourier coefficients. Index ``n`` multiplies ``sin(n * theta)``.
-        Index ``0`` is ignored. Default is ``None`` (no sine modes).
-    b_cos : list of float, optional
-        Cosine Fourier coefficients. Index ``n`` multiplies ``cos(n * theta)``.
-        Index ``0`` is added as a constant offset. Default is ``None``
-        (no cosine modes).
-    square : bool, optional
-        If ``True``, square the modulation map before returning. Default is
-        ``True``.
-    normalize_mean : bool, optional
-        If ``True``, divide by the mean of the modulation map so the average
-        value is 1. Default is ``True``.
-    clip_min : float, optional
-        Minimum value to clip the modulation map to before squaring and
-        normalising. Default is ``0.0``.
-
-    Returns
-    -------
-    mod : np.ndarray
-        Angular modulation map, same shape as ``theta``.
-    """
+    """Compute an angular modulation map from Fourier coefficients."""
     mod = np.ones_like(theta, dtype=float)
 
     if a_sin is not None:
@@ -125,6 +75,45 @@ def angular_asymmetry(
     return mod
 
 
+# ---------------------------------------------------------------------------
+# Channel-dict helpers
+# ---------------------------------------------------------------------------
+
+CHANNEL_KEYS = ("combined", "rings", "spirals", "planets")
+
+
+def empty_channels(size: int) -> Dict[str, np.ndarray]:
+    """Return a dict of zero arrays for every channel.
+
+    Parameters
+    ----------
+    size : int
+        Image size in pixels.
+
+    Returns
+    -------
+    dict of str -> np.ndarray
+        Keys are ``'combined'``, ``'rings'``, ``'spirals'``, ``'planets'``.
+    """
+    z = np.zeros((size, size))
+    return {k: z for k in CHANNEL_KEYS}
+
+
+def _ensure_channels(
+    x: Union[np.ndarray, Dict[str, np.ndarray]], size: int
+) -> Dict[str, np.ndarray]:
+    """Coerce input to a channel dict (used internally for flexibility)."""
+    if isinstance(x, dict):
+        return x
+    out = empty_channels(size)
+    out["combined"] = x
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Ring / spiral builders
+# ---------------------------------------------------------------------------
+
 def make_rings(
     size: int = 101,
     ring_radii: Tuple[float, ...] = (0.25, 0.5),
@@ -137,41 +126,40 @@ def make_rings(
     ring_b_cos_list: Optional[List[Optional[List[float]]]] = None,
     asymmetry_square: bool = True,
 ) -> np.ndarray:
-    """Generate a synthetic image of elliptical rings.
+    """Generate an image of elliptical rings.
 
     Parameters
     ----------
     size : int, optional
-        Image size in pixels. Default is ``101``.
+        Image size in pixels.
     ring_radii : tuple of float, optional
-        Normalised radial positions of each ring. Default is ``(0.25, 0.5)``.
+        Ring radii in **disk-relative units** ``[0, 1]``. A value of ``1.0``
+        sits on the disk edge as defined by ``disk_scale``.
     ring_widths : tuple of float, optional
-        Gaussian width of each ring. Default is ``(0.05, 0.05)``.
+        Gaussian ring widths in disk-relative units.
     ring_amplitudes : tuple of float, optional
-        Peak brightness of each ring. Default is ``(1.0, 0.8)``.
+        Peak brightness of each ring.
     axis_ratio : float, optional
-        Ratio of minor to major axis. Default is ``1.0`` (circular).
+        Minor-to-major axis ratio.
     position_angle : float, optional
-        Position angle of the major axis in radians. Default is ``0.0``.
+        Major-axis position angle in radians.
     disk_scale : float, optional
-        Global radial scale factor. Default is ``1.0``.
-    ring_a_sin_list : list of list of float or None, optional
-        Per-ring sine Fourier coefficients for angular asymmetry. Default is
-        ``None`` (no asymmetry).
-    ring_b_cos_list : list of list of float or None, optional
-        Per-ring cosine Fourier coefficients for angular asymmetry. Default is
-        ``None`` (no asymmetry).
+        Normalised radius (in ``[-1, 1]`` image coordinates) at which a
+        disk-relative radius of ``1.0`` sits. With ``disk_scale <= 1.0``
+        the entire disk lies inside the image. Default is ``1.0``.
+    ring_a_sin_list, ring_b_cos_list : list of (list of float or None), optional
+        Per-ring Fourier coefficients for angular asymmetry.
     asymmetry_square : bool, optional
-        If ``True``, square the angular modulation map. Default is ``True``.
+        Square the angular modulation map.
 
     Returns
     -------
-    image : np.ndarray
-        Synthetic ring image of shape ``(size, size)``.
+    np.ndarray
+        Ring image of shape ``(size, size)``.
     """
     xx, yy = make_coordinate_grid(size)
     r, theta = elliptical_polar(xx, yy, axis_ratio, position_angle)
-    r = r / disk_scale
+    r = r / disk_scale  # r is now in disk-relative units
 
     n_rings = len(ring_radii)
     image = np.zeros_like(r)
@@ -222,67 +210,66 @@ def make_spiral(
     arm_a_sin_list: Optional[List[Optional[List[float]]]] = None,
     arm_b_cos_list: Optional[List[Optional[List[float]]]] = None,
     asymmetry_square: bool = True,
-) -> np.ndarray:
-    """Generate a synthetic image of a spiral galaxy disk.
+) -> Dict[str, np.ndarray]:
+    """Generate a spiral-galaxy image, returning components separately.
+
+    The central ring is placed in the ``'rings'`` channel; the spiral arms
+    are placed in the ``'spirals'`` channel; ``'combined'`` is their sum.
+    The ``'planets'`` channel is zero.
 
     Parameters
     ----------
     size : int, optional
-        Image size in pixels. Default is ``101``.
+        Image size in pixels.
     ring_radius : float, optional
-        Normalised radius of the central ring. Set to ``0`` for an exponential
-        disk instead. Default is ``0.4``.
+        Central ring radius in disk-relative units. Set to ``0`` for an
+        exponential base disk instead.
     n_arms : int, optional
-        Number of spiral arms. Default is ``2``.
+        Number of spiral arms.
     pitch : float, optional
-        Pitch angle of the spiral arms. Default is ``0.3``.
+        Pitch angle of the spiral arms.
     ring_width : float, optional
-        Gaussian width of the central ring or exponential scale length.
-        Default is ``0.05``.
+        Gaussian width of the central ring (disk-relative units).
     ring_amplitude : float, optional
-        Peak brightness of the central ring or disk. Default is ``1.0``.
+        Brightness of the central ring or exponential disk.
     arm_width : float, optional
-        Angular width of each spiral arm in radians. Default is ``0.08``.
+        Angular width of each spiral arm in radians.
     arm_amplitudes : list of float, optional
-        Per-arm brightness amplitudes. Default is ``1.0`` for all arms.
+        Per-arm brightness amplitudes.
     axis_ratio : float, optional
-        Ratio of minor to major axis. Default is ``1.0`` (circular).
+        Minor-to-major axis ratio.
     position_angle : float, optional
-        Position angle of the major axis in radians. Default is ``0.0``.
+        Major-axis position angle in radians.
     disk_scale : float, optional
-        Global radial scale factor. Default is ``1.0``.
+        Normalised radius at which disk-relative radius ``1.0`` sits.
     spiral_peak_offset : float, optional
-        Radial offset of peak spiral arm brightness beyond the ring. Default
-        is ``0.10``.
+        Radial offset of peak arm brightness (disk-relative units) beyond
+        the ring.
     spiral_radial_sigma : float, optional
-        Radial Gaussian width of the spiral arm envelope. Default is ``0.20``.
+        Radial Gaussian width of the spiral arm envelope.
     normalize_output : bool, optional
-        If ``True``, normalise the output image to a peak of ``1.0``. Default
-        is ``False``.
-    ring_a_sin : list of float, optional
-        Sine Fourier coefficients for the central ring asymmetry. Default is
-        ``None``.
-    ring_b_cos : list of float, optional
-        Cosine Fourier coefficients for the central ring asymmetry. Default is
-        ``None``.
-    arm_a_sin_list : list of list of float or None, optional
-        Per-arm sine Fourier coefficients. Default is ``None``.
-    arm_b_cos_list : list of list of float or None, optional
-        Per-arm cosine Fourier coefficients. Default is ``None``.
+        Normalise the combined channel to a peak of 1.0. The same scale is
+        applied to ring and arm channels so they remain consistent.
+    ring_a_sin, ring_b_cos : list of float, optional
+        Central-ring Fourier coefficients.
+    arm_a_sin_list, arm_b_cos_list : list of (list of float or None), optional
+        Per-arm Fourier coefficients.
     asymmetry_square : bool, optional
-        If ``True``, square the angular modulation map. Default is ``True``.
+        Square the angular modulation maps.
 
     Returns
     -------
-    image : np.ndarray
-        Synthetic spiral image of shape ``(size, size)``.
+    dict of str -> np.ndarray
+        Channel dict with keys ``'combined'``, ``'rings'``, ``'spirals'``,
+        ``'planets'``.
     """
     xx, yy = make_coordinate_grid(size)
     r, theta = elliptical_polar(xx, yy, axis_ratio, position_angle)
     r = r / disk_scale
 
+    # --- central ring (goes in the rings channel) ---
     if ring_radius > 0:
-        base = make_rings(
+        ring_channel = make_rings(
             size=size,
             ring_radii=[ring_radius],
             ring_widths=[ring_width],
@@ -296,8 +283,9 @@ def make_spiral(
         )
         r_ref = ring_radius
     else:
-        base = ring_amplitude * np.exp(-r / (ring_width + 1e-6))
-        base = base * angular_asymmetry(
+        # exponential disk as the "ring" channel
+        ring_channel = ring_amplitude * np.exp(-r / (ring_width + 1e-6))
+        ring_channel = ring_channel * angular_asymmetry(
             theta,
             a_sin=ring_a_sin,
             b_cos=ring_b_cos,
@@ -307,8 +295,7 @@ def make_spiral(
         )
         r_ref = 1e-3
 
-    image = base.copy()
-
+    # --- spiral arms (goes in the spirals channel) ---
     if arm_amplitudes is None:
         arm_amplitudes = [1.0] * n_arms
     if arm_a_sin_list is None:
@@ -317,15 +304,20 @@ def make_spiral(
         arm_b_cos_list = [None] * n_arms
 
     dr = r - r_ref
-    outward_mask = (dr > 0).astype(r.dtype)
+    # Smooth sigmoid step at the ring edge: transition width matches the
+    # ring (or exponential-disk) scale so the spiral envelope joins
+    # continuously with the ring profile instead of starting with a hard
+    # edge.
+    transition_width = 0.5 * (ring_width if ring_radius > 0 else spiral_radial_sigma)
+    transition_width = max(float(transition_width), 1e-3)
+    outward_mask = 1.0 / (1.0 + np.exp(-dr / transition_width))
     radial_env = np.exp(
         -0.5 * ((dr - spiral_peak_offset) / (spiral_radial_sigma + 1e-6)) ** 2
     )
 
-    spiral_term = np.zeros_like(r)
-
+    spiral_channel = np.zeros_like(r)
     for i in range(n_arms):
-        theta_offset = 2 * pi * i / n_arms
+        theta_offset = 2 * np.pi * i / n_arms
         theta_spiral = (1 / pitch) * np.log((r + 1e-6) / r_ref)
         delta_theta = np.arctan2(
             np.sin(theta - theta_spiral - theta_offset),
@@ -340,18 +332,51 @@ def make_spiral(
             normalize_mean=True,
             clip_min=0.0,
         )
-        spiral_term = spiral_term + arm_amplitudes[i] * arm * arm_mod
+        spiral_channel = spiral_channel + arm_amplitudes[i] * arm * arm_mod
 
-    image = image + spiral_term * outward_mask * radial_env
+    spiral_channel = spiral_channel * outward_mask * radial_env
+
+    combined = ring_channel + spiral_channel
 
     if normalize_output:
-        image = image / image.max()
+        peak = combined.max()
+        peak = np.where(peak > 0, peak, 1.0)
+        ring_channel = ring_channel / peak
+        spiral_channel = spiral_channel / peak
+        combined = combined / peak
 
-    return image
+    return {
+        "combined": combined,
+        "rings": ring_channel,
+        "spirals": spiral_channel,
+        "planets": np.zeros_like(combined),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Planets
+# ---------------------------------------------------------------------------
+
+def _planet_layer(
+    size: int,
+    planet_radius: float,
+    planet_angle: float,
+    planet_amplitude: float,
+    planet_sigma: float,
+    disk_scale: float = 1.0,
+) -> np.ndarray:
+    """Return a single-planet Gaussian as its own 2D layer."""
+    xx, yy = make_coordinate_grid(size)
+    pr = planet_radius * disk_scale  # match make_rings/make_spiral: image-coord radius = param * disk_scale
+    px = pr * np.cos(planet_angle)
+    py = pr * np.sin(planet_angle)
+    return planet_amplitude * np.exp(
+        -((xx - px) ** 2 + (yy - py) ** 2) / (2 * planet_sigma**2)
+    )
 
 
 def add_planet(
-    image: np.ndarray,
+    image: Union[np.ndarray, Dict[str, np.ndarray]],
     planet_radius: float = 0.5,
     planet_angle: float = 0.0,
     planet_amplitude: float = 1.0,
@@ -359,58 +384,75 @@ def add_planet(
     disk_scale: float = 1.0,
     cap_to_image_max: bool = True,
     remove: bool = False,
-) -> np.ndarray:
-    """Add a Gaussian planet to an existing disk image.
+) -> Union[np.ndarray, Dict[str, np.ndarray]]:
+    """Add a Gaussian planet to an image or channel dict.
+
+    If a channel dict is passed, the planet is added to the ``'planets'``
+    channel **and** the ``'combined'`` channel; the rings and spirals
+    channels are unchanged.
 
     Parameters
     ----------
-    image : np.ndarray
-        Existing 2D image of shape ``(size, size)``.
+    image : np.ndarray or dict of str -> np.ndarray
+        Existing 2D image, or a channel dict.
     planet_radius : float, optional
-        Normalised radial location of the planet. Default is ``0.5``.
+        Planet location, multiplied by ``disk_scale`` to get image
+        coordinates (same convention as ``make_rings``).
     planet_angle : float, optional
-        Angular location of the planet in radians. Default is ``0.0``.
+        Planet angular location in radians.
     planet_amplitude : float, optional
-        Peak brightness of the planet. Default is ``1.0``.
+        Planet peak brightness.
     planet_sigma : float, optional
-        Gaussian width of the planet in normalised coordinate units. Default
-        is ``1.0``.
+        Planet Gaussian width in image-coordinate units.
     disk_scale : float, optional
-        Radial scale factor, must match the disk generator. Default is ``1.0``.
+        Radial scale factor (``planet_radius`` is multiplied by this).
     cap_to_image_max : bool, optional
-        If ``True``, prevent the planet from exceeding the current maximum
-        brightness in ``image``. Default is ``True``.
+        Cap the planet contribution so the combined image does not exceed
+        its current maximum.
     remove : bool, optional
-        If ``True``, subtract the planet instead of adding it. Default is
-        ``False``.
+        Subtract rather than add the planet.
 
     Returns
     -------
-    image : np.ndarray
-        Image with planet added (or removed), same shape as input.
+    np.ndarray or dict
+        Same type as the input.
     """
-    size = image.shape[0]
-    xx, yy = make_coordinate_grid(size)
+    is_dict = isinstance(image, dict)
+    if is_dict:
+        size = image["combined"].shape[0]
+        combined_in = image["combined"]
+    else:
+        size = image.shape[0]
+        combined_in = image
 
-    pr = planet_radius / disk_scale
-    px = pr * np.cos(planet_angle)
-    py = pr * np.sin(planet_angle)
-
-    planet = planet_amplitude * np.exp(
-        -((xx - px) ** 2 + (yy - py) ** 2) / (2 * planet_sigma**2)
+    planet = _planet_layer(
+        size=size,
+        planet_radius=planet_radius,
+        planet_angle=planet_angle,
+        planet_amplitude=planet_amplitude,
+        planet_sigma=planet_sigma,
+        disk_scale=disk_scale,
     )
 
     if remove:
         planet = planet * -1.0
 
     if cap_to_image_max:
-        max_val = image.max()
-        if max_val == 0.0:
-            max_val = 1.0
-        planet = np.minimum(planet, np.maximum(max_val - image, 0))
+        max_val = combined_in.max()
+        max_val = np.where(max_val == 0.0, 1.0, max_val)
+        planet = np.minimum(planet, np.maximum(max_val - combined_in, 0))
 
-    return image + planet
+    if is_dict:
+        out = dict(image)
+        out["planets"] = out["planets"] + planet
+        out["combined"] = out["combined"] + planet
+        return out
+    return combined_in + planet
 
+
+# ---------------------------------------------------------------------------
+# Fourier-coefficient sampling
+# ---------------------------------------------------------------------------
 
 def sample_fourier_coeffs(
     key: jax.Array,
@@ -418,34 +460,7 @@ def sample_fourier_coeffs(
     coeff_range: Tuple[float, float] = (-0.3, 0.3),
     prob_nonzero: float = 0.7,
 ) -> Tuple[Optional[List[float]], Optional[List[float]]]:
-    """Sample random Fourier coefficients for angular asymmetry.
-
-    Parameters
-    ----------
-    key : jax.Array
-        PRNG key for random sampling.
-    max_modes : int, optional
-        Maximum number of Fourier modes to sample. Default is ``3``.
-    coeff_range : tuple of float, optional
-        Range ``(min, max)`` for uniform coefficient sampling. Default is
-        ``(-0.3, 0.3)``.
-    prob_nonzero : float, optional
-        Probability that any modes are used at all. Default is ``0.7``.
-
-    Returns
-    -------
-    a_sin : list of float or None
-        Sine coefficients with a dummy ``n=0`` slot, or ``None`` if no modes
-        are sampled.
-    b_cos : list of float or None
-        Cosine coefficients with a dummy ``n=0`` slot, or ``None`` if no
-        modes are sampled.
-
-    Notes
-    -----
-    This function is intended for eager use only and is not compatible with
-    ``jax.jit``.
-    """
+    """Sample random Fourier coefficients for angular asymmetry."""
     k0, k1, k2 = jr.split(key, 3)
 
     if not bool(jr.bernoulli(k0, p=prob_nonzero)):
@@ -464,21 +479,12 @@ def sample_fourier_coeffs(
     return a_sin, b_cos
 
 
+# ---------------------------------------------------------------------------
+# Random ring / spiral wrappers (convenience)
+# ---------------------------------------------------------------------------
+
 def random_rings(key: jax.Array, size: int = 128) -> np.ndarray:
-    """Generate a random synthetic ring image.
-
-    Parameters
-    ----------
-    key : jax.Array
-        PRNG key for random parameter sampling.
-    size : int, optional
-        Image size in pixels. Default is ``128``.
-
-    Returns
-    -------
-    np.ndarray
-        Synthetic ring image of shape ``(size, size)``.
-    """
+    """Generate a random ring image (single combined array)."""
     k0, k1, k2, k3, k4, k5, *arm_keys = jr.split(key, 20)
 
     n_rings = int(jr.randint(k0, shape=(), minval=1, maxval=5))
@@ -488,8 +494,8 @@ def random_rings(key: jax.Array, size: int = 128) -> np.ndarray:
     ring_widths = jr.uniform(k2, shape=(n_rings,), minval=0.02, maxval=0.08)
     ring_amplitudes = jr.uniform(k3, shape=(n_rings,), minval=0.3, maxval=1.0)
     axis_ratio = float(jr.uniform(k4, minval=0.3, maxval=1.0))
-    position_angle = float(jr.uniform(k5, minval=0.0, maxval=2 * pi))
-    disk_scale = float(jr.uniform(arm_keys[0], minval=0.7, maxval=1.3))
+    position_angle = float(jr.uniform(k5, minval=0.0, maxval=2 * np.pi))
+    disk_scale = float(jr.uniform(arm_keys[0], minval=0.7, maxval=1.0))
 
     ring_a_sin_list = []
     ring_b_cos_list = []
@@ -513,21 +519,10 @@ def random_rings(key: jax.Array, size: int = 128) -> np.ndarray:
     )
 
 
-def random_spiral(key: jax.Array, size: int = 128) -> np.ndarray:
-    """Generate a random synthetic spiral galaxy image.
-
-    Parameters
-    ----------
-    key : jax.Array
-        PRNG key for random parameter sampling.
-    size : int, optional
-        Image size in pixels. Default is ``128``.
-
-    Returns
-    -------
-    np.ndarray
-        Synthetic spiral image of shape ``(size, size)``.
-    """
+def random_spiral(
+    key: jax.Array, size: int = 128
+) -> Dict[str, np.ndarray]:
+    """Generate a random spiral-galaxy channel dict."""
     k0, k1, k2, k3, k4, k5, k6, k7, k8, k9, *arm_keys = jr.split(key, 30)
 
     n_arms = int(jr.randint(k0, shape=(), minval=1, maxval=5))
@@ -535,8 +530,8 @@ def random_spiral(key: jax.Array, size: int = 128) -> np.ndarray:
         jr.uniform(k1, shape=(n_arms,), minval=0.3, maxval=1.5)
     )
     axis_ratio = float(jr.uniform(k2, minval=0.3, maxval=1.0))
-    position_angle = float(jr.uniform(k3, minval=0.0, maxval=2 * pi))
-    disk_scale = float(jr.uniform(k4, minval=0.7, maxval=1.3))
+    position_angle = float(jr.uniform(k3, minval=0.0, maxval=2 * np.pi))
+    disk_scale = float(jr.uniform(k4, minval=0.7, maxval=1.0))
 
     arm_a_sin_list = []
     arm_b_cos_list = []
@@ -575,29 +570,33 @@ def random_spiral(key: jax.Array, size: int = 128) -> np.ndarray:
     )
 
 
+# ---------------------------------------------------------------------------
+# Main random-object factory
+# ---------------------------------------------------------------------------
+
 def random_obj(
     key: jax.Array,
-    label: bool = False,
+    return_parts: bool = False,
     normalize: bool = True,
     power_val: float = 1.25,
     power_start: float = 0.6,
     size: int = 101,
-    disc_scale: Tuple[float, float] = (0.25, 1.0),
-    position_angle_range: Tuple[float, float] = (0, 2 * pi),
-    axis_ratio_range: Tuple[float, float] = (0.15, 1.0),
-    ring_range: Tuple[int, int] = (1, 5),
-    ring_radii_range: Tuple[float, float] = (0.25, 1.5),
-    ring_width_range: Tuple[float, float] = (0.25, 0.5),
+    disc_scale: Tuple[float, float] = (0.7, 1.3),
+    position_angle_range: Tuple[float, float] = (0, 2 * np.pi),
+    axis_ratio_range: Tuple[float, float] = (0.3, 1.0),
+    ring_range: Tuple[int, int] = (1, 6),
+    ring_radii_range: Tuple[float, float] = (0.2, 0.9),
+    ring_width_range: Tuple[float, float] = (0.05, 0.2),
     ring_amplitude_range: Tuple[float, float] = (0.125, 0.5),
     arm_range: Tuple[int, int] = (1, 5),
-    arm_width_range: Tuple[float, float] = (0.25, 0.75),
+    arm_width_range: Tuple[float, float] = (0.05, 0.3),
     arm_amplitude_range: Tuple[float, float] = (0.125, 0.5),
-    spiral_peak_offset: Tuple[float, float] = (0.0, 1.0),
-    spiral_radial_sigma: Tuple[float, float] = (0.0, 1.0),
+    spiral_peak_offset: Tuple[float, float] = (0.05, 0.6),
+    spiral_radial_sigma: Tuple[float, float] = (0.1, 0.4),
     pitch_range: Tuple[float, float] = (-1.0, 1.0),
     planets_range: Tuple[int, int] = (0, 3),
-    planet_angular_position_range: Tuple[float, float] = (0, 2 * pi),
-    planet_orbital_radius_range: Tuple[float, float] = (0.0, 1.0),
+    planet_angular_position_range: Tuple[float, float] = (0, 2 * np.pi),
+    planet_orbital_radius_range: Tuple[float, float] = (0.1, 0.9),
     planet_amplitude_range: Tuple[float, float] = (0.0, 2.0),
     planet_sigma_range: Tuple[float, float] = (0.01, 0.0625),
     use_asymmetry: bool = True,
@@ -607,116 +606,92 @@ def random_obj(
     per_arm_asymmetry_prob: float = 0.5,
     ring_base_asymmetry_prob: float = 0.5,
     asymmetry_square: bool = True,
-) -> np.ndarray:
-    """Randomly generate a synthetic protoplanetary disk image.
+    max_fov_fill: float = 0.9,
+    containment_sigma: float = 3.0,
+    planet_brightness_cap: float = 0.5,
+    verbose: bool = False,
+) -> Union[np.ndarray, Dict[str, np.ndarray]]:
+    """Randomly generate a synthetic protoplanetary-disk image.
 
-    Produces either a ringed disk or a spiral disk, optionally with planets,
-    using fully JAX-based random sampling.
+    Produces either a ringed disk or a spiral disk, optionally with planets.
+    Returns either a single combined image or a channel dict suitable for
+    multi-channel autoencoder training.
 
     Parameters
     ----------
     key : jax.Array
-        PRNG key for all random sampling.
-    label : bool, optional
-        Reserved for future label output. Default is ``False``.
+        PRNG key.
+    return_parts : bool, optional
+        If ``False`` (default) return only the combined image as a 2D array.
+        If ``True`` return a dict with keys ``'combined'``, ``'rings'``,
+        ``'spirals'``, ``'planets'``.
     normalize : bool, optional
-        If ``True``, normalise the output image to a peak of ``1.0``. Default
-        is ``True``.
-    power_val : float, optional
-        Exponent for the radial power-law taper (currently unused). Default
-        is ``1.25``.
-    power_start : float, optional
-        Normalised radius at which the power-law taper begins (currently
-        unused). Default is ``0.6``.
+        Deprecated / unused. The priority-cap combine logic now always
+        guarantees the combined image peaks at <= 1.0 without a global
+        renormalisation step. Kept for back-compat.
     size : int, optional
-        Image size in pixels. Default is ``101``.
+        Image size in pixels.
     disc_scale : tuple of float, optional
-        Range ``(min, max)`` for the global radial scale factor. Default is
-        ``(0.25, 1.0)``.
-    position_angle_range : tuple of float, optional
-        Range ``(min, max)`` for the disk position angle in radians. Default
-        is ``(0, 2π)``.
-    axis_ratio_range : tuple of float, optional
-        Range ``(min, max)`` for the minor-to-major axis ratio. Default is
-        ``(0.15, 1.0)``.
-    ring_range : tuple of int, optional
-        Range ``(min, max)`` for the number of rings in ring mode. Default is
-        ``(1, 5)``.
-    ring_radii_range : tuple of float, optional
-        Range ``(min, max)`` for ring radii in normalised units. Default is
-        ``(0.25, 1.5)``.
-    ring_width_range : tuple of float, optional
-        Range ``(min, max)`` for Gaussian ring widths. Default is
-        ``(0.25, 0.5)``.
-    ring_amplitude_range : tuple of float, optional
-        Range ``(min, max)`` for ring peak brightness. Default is
-        ``(0.125, 0.5)``.
-    arm_range : tuple of int, optional
-        Range ``(min, max)`` for the number of spiral arms. Default is
-        ``(1, 5)``.
-    arm_width_range : tuple of float, optional
-        Range ``(min, max)`` for spiral arm angular widths in radians. Default
-        is ``(0.25, 0.75)``.
-    arm_amplitude_range : tuple of float, optional
-        Range ``(min, max)`` for spiral arm brightness. Default is
-        ``(0.125, 0.5)``.
-    spiral_peak_offset : tuple of float, optional
-        Range ``(min, max)`` for the radial offset of peak arm brightness.
-        Default is ``(0.0, 1.0)``.
-    spiral_radial_sigma : tuple of float, optional
-        Range ``(min, max)`` for the radial Gaussian width of the arm
-        envelope. Default is ``(0.0, 1.0)``.
+        Range ``(min, max)`` for the radial scale factor: feature image-coord
+        radii are ``param_value * disk_scale``. After sampling, this is
+        automatically reduced if needed so the outermost feature stays inside
+        ``max_fov_fill`` of the image. Default is ``(0.7, 1.3)``.
+    ring_radii_range, ring_width_range, ring_amplitude_range : tuple of float, optional
+        Ranges for ring radii, Gaussian widths, and amplitudes. Radii and
+        widths are in pre-``disk_scale`` units; the effective image-coord
+        extent is the value divided by ``disk_scale``.
+    arm_range, arm_width_range, arm_amplitude_range : optional
+        Spiral arm count, angular widths (radians), and amplitudes.
+    spiral_peak_offset, spiral_radial_sigma : tuple of float, optional
+        Ranges for the radial offset and Gaussian width of the spiral arm
+        envelope (pre-``disk_scale`` units).
     pitch_range : tuple of float, optional
-        Range ``(min, max)`` for the spiral pitch angle. Default is
-        ``(-1.0, 1.0)``.
-    planets_range : tuple of int, optional
-        Range ``(min, max)`` for the number of planets. Default is ``(0, 3)``.
-    planet_angular_position_range : tuple of float, optional
-        Range ``(min, max)`` for planet angular positions in radians. Default
-        is ``(0, 2π)``.
-    planet_orbital_radius_range : tuple of float, optional
-        Range ``(min, max)`` for planet orbital radii in normalised units.
-        Default is ``(0.0, 1.0)``.
-    planet_amplitude_range : tuple of float, optional
-        Range ``(min, max)`` for planet peak brightness. Default is
-        ``(0.0, 2.0)``.
-    planet_sigma_range : tuple of float, optional
-        Range ``(min, max)`` for planet Gaussian widths. Default is
-        ``(0.01, 0.0625)``.
-    use_asymmetry : bool, optional
-        If ``True``, apply random Fourier angular asymmetry to rings and arms.
-        Default is ``True``.
-    max_fourier_modes : int, optional
-        Maximum number of Fourier modes for angular asymmetry. Default is
-        ``3``.
-    fourier_coeff_range : tuple of float, optional
-        Range ``(min, max)`` for Fourier coefficient sampling. Default is
-        ``(-0.1, 0.1)``.
-    per_ring_asymmetry_prob : float, optional
-        Probability of applying asymmetry to each ring. Default is ``0.5``.
-    per_arm_asymmetry_prob : float, optional
-        Probability of applying asymmetry to each spiral arm. Default is
-        ``0.5``.
-    ring_base_asymmetry_prob : float, optional
-        Probability of applying asymmetry to the spiral base ring. Default is
-        ``0.5``.
+        Spiral pitch range.
+    planets_range, planet_*_range : optional
+        Planet count, angular position (radians), orbital radius
+        (pre-``disk_scale`` units), amplitude, and sigma (image-coord units).
+    use_asymmetry, max_fourier_modes, fourier_coeff_range : optional
+        Angular asymmetry controls.
+    per_ring_asymmetry_prob, per_arm_asymmetry_prob, ring_base_asymmetry_prob :
+        Probabilities of applying asymmetry to rings, arms, and the spiral
+        central ring.
     asymmetry_square : bool, optional
-        If ``True``, square the angular modulation map. Default is ``True``.
+        Square the angular modulation map.
+    max_fov_fill : float, optional
+        Maximum fraction of the image half-width that any feature may occupy.
+        The sampled ``disc_scale_val`` is increased post-hoc so that the
+        outermost feature (rings + N sigma, spiral envelope + N sigma, or
+        planet position + N sigma) lies inside this radius. Default is
+        ``0.9``.
+    containment_sigma : float, optional
+        Multiplier on Gaussian widths used when computing the outermost
+        radial extent for containment. Default is ``3.0`` (3-sigma).
+    planet_brightness_cap : float, optional
+        Peak brightness of the planets channel relative to the disk
+        (which is normalised to peak 1.0). Default ``0.5``. Planets are
+        added to combined rather than capped against the disk, so a
+        planet on top of the disk creates a bright spot; the combined
+        image may exceed 1.0 at overlap pixels. Increase for more
+        prominent planets; decrease to suppress them.
+    verbose : bool, optional
+        If ``True``, print all sampled parameters (mode, geometry, ring/arm
+        values, planets, asymmetry coefficients, image stats) for this draw.
+        The same report is also printed automatically when a blank image is
+        detected, regardless of this flag. Default is ``False``.
 
     Returns
     -------
-    np.ndarray
-        Synthetic disk image of shape ``(size, size)``.
+    np.ndarray or dict of str -> np.ndarray
+        See ``return_parts``.
 
     Notes
     -----
-    This function is intended for eager execution only and is not compatible
-    with ``jax.jit`` due to Python-level branching and variable-length lists.
-    The probability of ring mode vs spiral mode is fixed at 30 % / 70 %.
+    Not jit-compatible: uses Python-level branching and variable-length lists.
+    Ring-mode vs spiral-mode probability is fixed at 30 % / 70 %.
     """
     keys = jr.split(key, 64)
 
-    # Global disk geometry
+    # --- global disk geometry ---
     disc_scale_val = float(
         jr.uniform(keys[0], minval=disc_scale[0], maxval=disc_scale[1])
     )
@@ -734,7 +709,7 @@ def random_obj(
     )
     rings = bool(jr.bernoulli(keys[3], p=0.3))
 
-    # Defaults
+    # Defaults used in the blank-image diagnostic and containment calc
     n_rings = 0
     ring_radii = ring_widths = ring_amplitudes = None
     ring_radius = ring_width = ring_amplitude = 0.0
@@ -745,7 +720,11 @@ def random_obj(
     ring_a_sin = ring_b_cos = None
     arm_a_sin_list = arm_b_cos_list = None
 
-    # Ring mode
+    # =====================================================================
+    # Phase 1: sample all radial parameters (rings, spirals, planets)
+    # =====================================================================
+
+    # --- ring mode: sample params ---
     if rings:
         n_rings = int(
             jr.randint(
@@ -789,20 +768,7 @@ def random_obj(
                 ring_a_sin_list.append(a)
                 ring_b_cos_list.append(b)
 
-        image = make_rings(
-            size=size,
-            disk_scale=disc_scale_val,
-            position_angle=position_angle,
-            axis_ratio=axis_ratio,
-            ring_radii=ring_radii,
-            ring_widths=ring_widths,
-            ring_amplitudes=ring_amplitudes,
-            ring_a_sin_list=ring_a_sin_list,
-            ring_b_cos_list=ring_b_cos_list,
-            asymmetry_square=asymmetry_square,
-        )
-
-    # Spiral mode
+    # --- spiral mode: sample params ---
     else:
         ring_radius = float(
             jr.uniform(
@@ -879,28 +845,7 @@ def random_obj(
                     arm_a_sin_list.append(a)
                     arm_b_cos_list.append(b)
 
-        image = make_spiral(
-            size=size,
-            disk_scale=disc_scale_val,
-            position_angle=position_angle,
-            axis_ratio=axis_ratio,
-            ring_radius=ring_radius,
-            ring_width=ring_width,
-            ring_amplitude=ring_amplitude,
-            n_arms=n_arms,
-            arm_width=arm_width,
-            arm_amplitudes=arm_amplitudes,
-            spiral_peak_offset=spiral_peak_offset_val,
-            spiral_radial_sigma=spiral_radial_sigma_val,
-            pitch=pitch,
-            ring_a_sin=ring_a_sin,
-            ring_b_cos=ring_b_cos,
-            arm_a_sin_list=arm_a_sin_list,
-            arm_b_cos_list=arm_b_cos_list,
-            asymmetry_square=asymmetry_square,
-        )
-
-    # Planets
+    # --- planets: sample params ---
     n_planets = int(
         jr.randint(
             keys[20],
@@ -939,74 +884,231 @@ def random_obj(
             maxval=planet_sigma_range[1],
         )
 
+    # =====================================================================
+    # Phase 2: shrink disc_scale_val if needed to keep features in the FOV
+    # =====================================================================
+    # In make_rings/make_spiral the image-coord radial extent of a feature
+    # is `feature_radius * disk_scale` (because the code does
+    # `r = r_image / disk_scale` and then evaluates Gaussians in those
+    # units). So to keep a feature inside `max_fov_fill` of the image we
+    # need disk_scale <= max_fov_fill / outermost_radius. We compute the
+    # outermost (peak + containment_sigma*width) over all features, then
+    # clamp disc_scale_val downward if needed.
+
+    max_allowed_disc_scale = float("inf")
+
+    if rings and n_rings > 0:
+        r_outer_rings = float(ring_radii.max()) + containment_sigma * float(
+            ring_widths.max()
+        )
+        if r_outer_rings > 0:
+            max_allowed_disc_scale = min(
+                max_allowed_disc_scale, max_fov_fill / r_outer_rings
+            )
+
+    if not rings:
+        # central ring of the spiral
+        r_outer_central = ring_radius + containment_sigma * ring_width
+        # spiral arm envelope: peak at ring_radius + spiral_peak_offset_val
+        r_outer_arms = (
+            ring_radius
+            + spiral_peak_offset_val
+            + containment_sigma * spiral_radial_sigma_val
+        )
+        r_outer_spiral = max(r_outer_central, r_outer_arms)
+        if r_outer_spiral > 0:
+            max_allowed_disc_scale = min(
+                max_allowed_disc_scale, max_fov_fill / r_outer_spiral
+            )
+
+    if n_planets > 0:
+        # In add_planet the planet is placed at image-coord
+        # (planet_radius * disk_scale, planet_angle) with width planet_sigma
+        # (already in image-coord units). Containment:
+        #   planet_radius * disk_scale + containment_sigma * planet_sigma
+        #     <= max_fov_fill
+        # => disk_scale <= (max_fov_fill - containment_sigma*planet_sigma)
+        #                  / planet_radius
+        for radius, sigma in zip(planet_orbital_radii, planet_sigmas):
+            r_pl = float(radius)
+            s_pl = float(sigma)
+            slack = max_fov_fill - containment_sigma * s_pl
+            if r_pl > 1e-6 and slack > 0:
+                max_allowed_disc_scale = min(
+                    max_allowed_disc_scale, slack / r_pl
+                )
+            # if slack <= 0 the planet itself is wider than the FOV
+            # allowance; planet_sigma_range max (0.0625) keeps this safe.
+
+    if max_allowed_disc_scale < disc_scale_val:
+        disc_scale_val = max_allowed_disc_scale
+
+    # =====================================================================
+    # Phase 3: render each part-channel independently
+    # =====================================================================
+    # Each of rings/spirals/planets is built as its own 2D array. They are
+    # NOT yet summed into the combined image — that happens after per-part
+    # normalisation in phase 4, so that no single component dominates the
+    # final combined brightness.
+
+    zeros = np.zeros((size, size))
+    rings_layer = zeros
+    spirals_layer = zeros
+    planets_layer = zeros
+
+    if rings:
+        rings_layer = make_rings(
+            size=size,
+            disk_scale=disc_scale_val,
+            position_angle=position_angle,
+            axis_ratio=axis_ratio,
+            ring_radii=ring_radii,
+            ring_widths=ring_widths,
+            ring_amplitudes=ring_amplitudes,
+            ring_a_sin_list=ring_a_sin_list,
+            ring_b_cos_list=ring_b_cos_list,
+            asymmetry_square=asymmetry_square,
+        )
+    else:
+        spiral_channels = make_spiral(
+            size=size,
+            disk_scale=disc_scale_val,
+            position_angle=position_angle,
+            axis_ratio=axis_ratio,
+            ring_radius=ring_radius,
+            ring_width=ring_width,
+            ring_amplitude=ring_amplitude,
+            n_arms=n_arms,
+            arm_width=arm_width,
+            arm_amplitudes=arm_amplitudes,
+            spiral_peak_offset=spiral_peak_offset_val,
+            spiral_radial_sigma=spiral_radial_sigma_val,
+            pitch=pitch,
+            ring_a_sin=ring_a_sin,
+            ring_b_cos=ring_b_cos,
+            arm_a_sin_list=arm_a_sin_list,
+            arm_b_cos_list=arm_b_cos_list,
+            asymmetry_square=asymmetry_square,
+        )
+        rings_layer = spiral_channels["rings"]
+        spirals_layer = spiral_channels["spirals"]
+
+    if n_planets > 0:
+        # Pristine planet Gaussians, summed (no capping).
+        planets_layer = np.zeros((size, size))
         for angle, radius, amp, sigma in zip(
             planet_angular_positions,
             planet_orbital_radii,
             planet_amplitudes,
             planet_sigmas,
         ):
-            image = add_planet(
-                image=image,
+            planets_layer = planets_layer + _planet_layer(
+                size=size,
                 planet_radius=float(radius),
                 planet_angle=float(angle),
                 planet_amplitude=float(amp),
                 planet_sigma=float(sigma),
                 disk_scale=disc_scale_val,
-                cap_to_image_max=True,
             )
 
-    # Blank image debug
-    max_val = float(image.max())
-    min_val = float(image.min())
+    # =====================================================================
+    # Phase 4: per-part normalisation with bounded planet brightness, then sum
+    # =====================================================================
+    # Each part-channel is built independently, then:
+    #   * rings   -> normalised to peak 1.0
+    #   * spirals -> normalised to peak 1.0
+    #   * planets -> normalised to peak ``planet_brightness_cap`` (default 0.5)
+    # combined = rings + spirals + planets, with no further renormalisation.
+    #
+    # Implications:
+    #   * Strict additivity holds exactly.
+    #   * The disk (rings + spirals) is never dimmed by overlap with a planet.
+    #   * Where a planet sits on the disk, the combined image gets BRIGHTER
+    #     at that spot (additive, not occluding). Combined.max() may exceed
+    #     1.0 in overlap regions; for visualisation use vmax=1 (saturates
+    #     overlaps) or per-image normalise at load time for training if
+    #     desired.
 
-    if max_val < 1e-6:
-        print("\n--- Blank image detected ---")
-        print(
-            f"disc_scale: {disc_scale_val}, axis_ratio: {axis_ratio}, position_angle: {position_angle}"
+    def _norm_to(x, target_peak):
+        peak = x.max()
+        return np.where(
+            peak > 1e-8,
+            x * (target_peak / np.where(peak > 0, peak, 1.0)),
+            x,
         )
+
+    rings_layer = _norm_to(rings_layer, 1.0)
+    spirals_layer = _norm_to(spirals_layer, 1.0)
+    planets_layer = _norm_to(planets_layer, planet_brightness_cap)
+
+    combined = rings_layer + spirals_layer + planets_layer
+
+    channels = {
+        "combined": combined,
+        "rings": rings_layer,
+        "spirals": spirals_layer,
+        "planets": planets_layer,
+    }
+
+    # --- parameter report (on verbose, or automatically if blank) ---
+    max_val = float(channels["combined"].max())
+    min_val = float(channels["combined"].min())
+
+    def _print_params(header):
+        print(f"\n--- {header} ---")
+        print(f"MODE: {'RING' if rings else 'SPIRAL'}")
+        print(
+            f"GEOMETRY | disc_scale: {disc_scale_val:.4f} | axis_ratio: {axis_ratio:.4f} | position_angle: {position_angle:.4f}"
+        )
+        print(f"FOV | max_fov_fill: {max_fov_fill} | containment_sigma: {containment_sigma}")
         if rings:
             print(
-                f"RING MODE | n_rings: {n_rings} | radii: {ring_radii} | widths: {ring_widths} | amplitudes: {ring_amplitudes}"
+                f"RINGS | n_rings: {n_rings} | radii: {ring_radii} | widths: {ring_widths} | amplitudes: {ring_amplitudes}"
             )
             print(
-                f"ring_a_sin_list: {ring_a_sin_list} | ring_b_cos_list: {ring_b_cos_list}"
+                f"RING ASYMMETRY | a_sin: {ring_a_sin_list} | b_cos: {ring_b_cos_list}"
             )
         else:
             print(
-                f"SPIRAL MODE | ring_radius: {ring_radius} | ring_width: {ring_width} | ring_amplitude: {ring_amplitude}"
+                f"BASE RING | ring_radius: {ring_radius:.4f} | ring_width: {ring_width:.4f} | ring_amplitude: {ring_amplitude:.4f}"
             )
             print(
-                f"n_arms: {n_arms} | arm_width: {arm_width} | arm_amplitudes: {arm_amplitudes}"
+                f"ARMS | n_arms: {n_arms} | arm_width: {arm_width:.4f} | pitch: {pitch:.4f} | amplitudes: {arm_amplitudes}"
             )
             print(
-                f"spiral_peak_offset: {spiral_peak_offset_val} | spiral_radial_sigma: {spiral_radial_sigma_val} | pitch: {pitch}"
+                f"ENVELOPE | spiral_peak_offset: {spiral_peak_offset_val:.4f} | spiral_radial_sigma: {spiral_radial_sigma_val:.4f}"
             )
-            print(f"ring_a_sin: {ring_a_sin} | ring_b_cos: {ring_b_cos}")
-            print(
-                f"arm_a_sin_list: {arm_a_sin_list} | arm_b_cos_list: {arm_b_cos_list}"
-            )
-        print(f"PLANETS | n_planets: {n_planets}")
+            print(f"BASE-RING ASYMMETRY | a_sin: {ring_a_sin} | b_cos: {ring_b_cos}")
+            print(f"ARM ASYMMETRY | a_sin: {arm_a_sin_list} | b_cos: {arm_b_cos_list}")
+        print(f"PLANETS | n_planets: {n_planets} | brightness_cap: {planet_brightness_cap}")
         if n_planets > 0:
             print(
-                f"angles: {planet_angular_positions} | radii: {planet_orbital_radii} | amplitudes: {planet_amplitudes} | sigmas: {planet_sigmas}"
+                f"  angles: {planet_angular_positions} | radii: {planet_orbital_radii} | amplitudes: {planet_amplitudes} | sigmas: {planet_sigmas}"
             )
-        print(f"IMAGE STATS | min: {min_val} | max: {max_val}")
-        print("----------------------------\n")
+        print(f"IMAGE STATS | min: {min_val:.4f} | max: {max_val:.4f}")
+        print("-" * (len(header) + 8) + "\n")
 
-    if normalize:
-        image = image / image.max()
+    if max_val < 1e-6:
+        _print_params("Blank image detected")
+    elif verbose:
+        _print_params("random_obj parameters")
 
-    return image
+    if return_parts:
+        return channels
+    return channels["combined"]
+
+
+# ---------------------------------------------------------------------------
+# Down-binning utility (unchanged)
+# ---------------------------------------------------------------------------
 
 def bin_down(img, size=51, power_val=1.25, power_start=0.6):
-    assert img.shape == (101,101)
+    assert img.shape == (101, 101)
     core = img[:100, :100].reshape(50, 2, 50, 2).sum(axis=(1, 3))
 
-    # Last row and column
     last_row = img[100, :100].reshape(50, 2).sum(axis=1)
     last_col = img[:100, 100].reshape(50, 2).sum(axis=1)
 
-    # Assemble output
     out = np.zeros((51, 51), dtype=img.dtype)
     out = out.at[:50, :50].set(core)
     out = out.at[50, :50].set(last_row)
@@ -1022,7 +1124,7 @@ def bin_down(img, size=51, power_val=1.25, power_start=0.6):
         taper = np.where(
             t < power_start,
             1.0,
-            (1 - (t - power_start) / (1 - power_start)) ** power_val
+            (1 - (t - power_start) / (1 - power_start)) ** power_val,
         )
         taper = np.clip(taper, 0.0, 1.0)
         out = out * taper
