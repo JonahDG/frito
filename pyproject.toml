@@ -23,7 +23,7 @@ dependencies = [
     "pyehtplot",
     "scienceplots>=2.2.1",
     "scikit-learn>=1.8.0",
-    "zodiax[dev]>=0.4.1",
+    "zodiax"
 ]
 
 classifiers=[
