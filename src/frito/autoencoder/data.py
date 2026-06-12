@@ -3,10 +3,10 @@ from jax import numpy as np, tree as jt, random as jr, Array
 from typing import Dict, List, Optional, Tuple, Union
 
 
-
 # ---------------------------------------------------------------------------
 # Geometry helpers
 # ---------------------------------------------------------------------------
+
 
 def make_coordinate_grid(size: int) -> Tuple[np.ndarray, np.ndarray]:
     """Return a centered coordinate grid in range ``[-1, 1]``.
@@ -118,6 +118,7 @@ def _ensure_channels(
 # ---------------------------------------------------------------------------
 # Ring / spiral builders
 # ---------------------------------------------------------------------------
+
 
 def make_rings(
     size: int = 101,
@@ -313,7 +314,9 @@ def make_spiral(
     # ring (or exponential-disk) scale so the spiral envelope joins
     # continuously with the ring profile instead of starting with a hard
     # edge.
-    transition_width = 0.5 * (ring_width if ring_radius > 0 else spiral_radial_sigma)
+    transition_width = 0.5 * (
+        ring_width if ring_radius > 0 else spiral_radial_sigma
+    )
     transition_width = max(float(transition_width), 1e-3)
     outward_mask = 1.0 / (1.0 + np.exp(-dr / transition_width))
     radial_env = np.exp(
@@ -362,6 +365,7 @@ def make_spiral(
 # Planets
 # ---------------------------------------------------------------------------
 
+
 def _planet_layer(
     size: int,
     planet_radius: float,
@@ -372,7 +376,9 @@ def _planet_layer(
 ) -> np.ndarray:
     """Return a single-planet Gaussian as its own 2D layer."""
     xx, yy = make_coordinate_grid(size)
-    pr = planet_radius * disk_scale  # match make_rings/make_spiral: image-coord radius = param * disk_scale
+    pr = (
+        planet_radius * disk_scale
+    )  # match make_rings/make_spiral: image-coord radius = param * disk_scale
     px = pr * np.cos(planet_angle)
     py = pr * np.sin(planet_angle)
     return planet_amplitude * np.exp(
@@ -459,6 +465,7 @@ def add_planet(
 # Fourier-coefficient sampling
 # ---------------------------------------------------------------------------
 
+
 def sample_fourier_coeffs(
     key: jax.Array,
     max_modes: int = 3,
@@ -487,6 +494,7 @@ def sample_fourier_coeffs(
 # ---------------------------------------------------------------------------
 # Random ring / spiral wrappers (convenience)
 # ---------------------------------------------------------------------------
+
 
 def random_rings(key: jax.Array, size: int = 128) -> np.ndarray:
     """Generate a random ring image (single combined array)."""
@@ -524,9 +532,7 @@ def random_rings(key: jax.Array, size: int = 128) -> np.ndarray:
     )
 
 
-def random_spiral(
-    key: jax.Array, size: int = 128
-) -> Dict[str, np.ndarray]:
+def random_spiral(key: jax.Array, size: int = 128) -> Dict[str, np.ndarray]:
     """Generate a random spiral-galaxy channel dict."""
     k0, k1, k2, k3, k4, k5, k6, k7, k8, k9, *arm_keys = jr.split(key, 30)
 
@@ -578,6 +584,7 @@ def random_spiral(
 # ---------------------------------------------------------------------------
 # Main random-object factory
 # ---------------------------------------------------------------------------
+
 
 def random_obj(
     key: jax.Array,
@@ -1065,7 +1072,9 @@ def random_obj(
         print(
             f"GEOMETRY | disc_scale: {disc_scale_val:.4f} | axis_ratio: {axis_ratio:.4f} | position_angle: {position_angle:.4f}"
         )
-        print(f"FOV | max_fov_fill: {max_fov_fill} | containment_sigma: {containment_sigma}")
+        print(
+            f"FOV | max_fov_fill: {max_fov_fill} | containment_sigma: {containment_sigma}"
+        )
         if rings:
             print(
                 f"RINGS | n_rings: {n_rings} | radii: {ring_radii} | widths: {ring_widths} | amplitudes: {ring_amplitudes}"
@@ -1083,9 +1092,15 @@ def random_obj(
             print(
                 f"ENVELOPE | spiral_peak_offset: {spiral_peak_offset_val:.4f} | spiral_radial_sigma: {spiral_radial_sigma_val:.4f}"
             )
-            print(f"BASE-RING ASYMMETRY | a_sin: {ring_a_sin} | b_cos: {ring_b_cos}")
-            print(f"ARM ASYMMETRY | a_sin: {arm_a_sin_list} | b_cos: {arm_b_cos_list}")
-        print(f"PLANETS | n_planets: {n_planets} | brightness_cap: {planet_brightness_cap}")
+            print(
+                f"BASE-RING ASYMMETRY | a_sin: {ring_a_sin} | b_cos: {ring_b_cos}"
+            )
+            print(
+                f"ARM ASYMMETRY | a_sin: {arm_a_sin_list} | b_cos: {arm_b_cos_list}"
+            )
+        print(
+            f"PLANETS | n_planets: {n_planets} | brightness_cap: {planet_brightness_cap}"
+        )
         if n_planets > 0:
             print(
                 f"  angles: {planet_angular_positions} | radii: {planet_orbital_radii} | amplitudes: {planet_amplitudes} | sigmas: {planet_sigmas}"
@@ -1107,32 +1122,142 @@ def random_obj(
 # Down-binning utility (unchanged)
 # ---------------------------------------------------------------------------
 
-def bin_down(img, size=51, power_val=1.25, power_start=0.6):
-    assert img.shape == (101, 101)
-    core = img[:100, :100].reshape(50, 2, 50, 2).sum(axis=(1, 3))
 
-    last_row = img[100, :100].reshape(50, 2).sum(axis=1)
-    last_col = img[:100, 100].reshape(50, 2).sum(axis=1)
+def _bin_2x2_odd(img: np.ndarray) -> np.ndarray:
+    """Sum-pool a 2D image of odd size by 2x2 blocks.
 
-    out = np.zeros((51, 51), dtype=img.dtype)
-    out = out.at[:50, :50].set(core)
-    out = out.at[50, :50].set(last_row)
-    out = out.at[:50, 50].set(last_col)
-    out = out.at[50, 50].set(img[100, 100])
+    Input shape ``(n, n)`` with ``n`` odd is reduced to
+    ``((n+1)//2, (n+1)//2)`` by summing 2x2 blocks in the even-sized
+    ``(n-1, n-1)`` core, with the final row, final column, and corner
+    pixel carried through unchanged (the final row/col are summed pairwise
+    along their length, the corner is the single pixel).
+
+    Parameters
+    ----------
+    img : np.ndarray
+        2D array of shape ``(n, n)`` with ``n`` odd.
+
+    Returns
+    -------
+    np.ndarray
+        Binned 2D array of shape ``((n+1)//2, (n+1)//2)``.
+    """
+    n = img.shape[0]
+    assert img.shape == (n, n), f"expected square input, got {img.shape}"
+    assert n % 2 == 1, f"expected odd input size, got {n}"
+
+    core_n = n - 1  # even portion
+    out_n = (n + 1) // 2  # = core_n // 2 + 1
+    core_out = core_n // 2
+
+    core = (
+        img[:core_n, :core_n].reshape(core_out, 2, core_out, 2).sum(axis=(1, 3))
+    )
+    last_row = img[core_n, :core_n].reshape(core_out, 2).sum(axis=1)
+    last_col = img[:core_n, core_n].reshape(core_out, 2).sum(axis=1)
+
+    out = np.zeros((out_n, out_n), dtype=img.dtype)
+    out = out.at[:core_out, :core_out].set(core)
+    out = out.at[core_out, :core_out].set(last_row)
+    out = out.at[:core_out, core_out].set(last_col)
+    out = out.at[core_out, core_out].set(img[core_n, core_n])
+    return out
+
+
+def _radial_taper(
+    out_size: int, power_val: float, power_start: float
+) -> np.ndarray:
+    """Build a radial brightness taper map of shape ``(out_size, out_size)``.
+
+    The taper is ``1.0`` inside a normalised radius of ``power_start`` and
+    falls smoothly to ``0`` at the corners (normalised radius 1.0) with a
+    power-law of exponent ``power_val``. Used to soften the image edge
+    after binning.
+    """
+    xx, yy = make_coordinate_grid(out_size)
+    r_edge = np.sqrt(xx**2 + yy**2)
+    r_max = r_edge.max()
+    t = r_edge / r_max
+
+    taper = np.where(
+        t < power_start,
+        1.0,
+        (1 - (t - power_start) / (1 - power_start)) ** power_val,
+    )
+    return np.clip(taper, 0.0, 1.0)
+
+
+def bin_down(
+    img,
+    power_val: float = 1.25,
+    power_start: float = 0.6,
+    normalize: bool = True,
+):
+    """Down-bin a 2x2 image (or channel dict) with a soft radial taper.
+
+    Accepts either a single 2D array of odd square shape, or a dict of
+    such arrays (as produced by ``random_obj(return_parts=True)``). Output
+    size is ``(n+1)//2`` per axis; e.g. ``101 -> 51``, ``51 -> 26``,
+    ``201 -> 101``.
+
+    For a single image the taper is applied and the result is normalised
+    to peak 1.0 (when ``normalize`` is true).
+
+    For a channel dict the SAME taper is applied to every channel, and
+    every channel is divided by the SAME factor (the post-taper peak of
+    ``'combined'``), so the inter-channel brightness ratios produced by
+    ``random_obj`` are preserved.
+
+    Parameters
+    ----------
+    img : np.ndarray or dict of str -> np.ndarray
+        Single 2D image or channel dict. All arrays must be square with
+        the same odd size.
+    power_val : float, optional
+        Exponent of the radial taper (steepness of the edge falloff).
+        Set to ``0`` to skip the taper entirely. Default ``1.25``.
+    power_start : float, optional
+        Normalised radius (in ``[0, 1]``) at which the taper begins.
+        Set to ``0`` to skip the taper entirely. Default ``0.6``.
+    normalize : bool, optional
+        If ``True``, divide by the peak so the output (or combined channel)
+        peaks at 1.0. Default ``True``.
+
+    Returns
+    -------
+    np.ndarray or dict
+        Binned-down array or channel dict (matches input type).
+    """
+    # ---- dict path: bin each channel with shared taper + shared norm ----
+    if isinstance(img, dict):
+        binned = {k: _bin_2x2_odd(v) for k, v in img.items()}
+        out_size = next(iter(binned.values())).shape[0]
+
+        if power_val > 0 and power_start > 0:
+            taper = _radial_taper(out_size, power_val, power_start)
+            binned = {k: v * taper for k, v in binned.items()}
+
+        if normalize:
+            # Anchor to the combined channel's peak when available so the
+            # relative brightness of rings vs spirals vs planets is
+            # preserved; fall back to the per-dict global peak otherwise.
+            if "combined" in binned:
+                peak = binned["combined"].max()
+            else:
+                peak = max(float(v.max()) for v in binned.values())
+            peak = np.where(peak > 0, peak, 1.0)
+            binned = {k: v / peak for k, v in binned.items()}
+        return binned
+
+    # ---- single-image path ----
+    out = _bin_2x2_odd(img)
+    out_size = out.shape[0]
 
     if power_val > 0 and power_start > 0:
-        xx, yy = make_coordinate_grid(size)
-        r_edge = np.sqrt(xx**2 + yy**2)
-        r_max = r_edge.max()
-        t = r_edge / r_max
+        out = out * _radial_taper(out_size, power_val, power_start)
 
-        taper = np.where(
-            t < power_start,
-            1.0,
-            (1 - (t - power_start) / (1 - power_start)) ** power_val,
-        )
-        taper = np.clip(taper, 0.0, 1.0)
-        out = out * taper
-
-        out /= np.max(out)
+    if normalize:
+        peak = out.max()
+        peak = np.where(peak > 0, peak, 1.0)
+        out = out / peak
     return out
