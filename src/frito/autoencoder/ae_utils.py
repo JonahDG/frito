@@ -368,33 +368,25 @@ def save_checkpoint(
     global_step: int,
     key: jax.Array,
 ) -> None:
-    """Save a training checkpoint.
+    """Save the model weights at a checkpoint.
 
-    Serialises the full ``(model, opt_state, epoch, global_step, key)``
-    tuple as a single equinox PyTree. Integers are wrapped in JAX arrays
-    so they round-trip through the serialisation cleanly.
+    Despite the name and signature, this currently only persists the
+    model (opt_state, epoch, global_step, and key are accepted but
+    ignored). Use this for periodic / best-validation snapshots that you
+    want to inspect or warm-start from. ``--resume_from`` will restore
+    the weights but training will restart from epoch 0 with a fresh
+    optimiser state and RNG.
 
     Parameters
     ----------
     path : str
         Output path (any extension; ``.eqx`` is conventional).
-    model, opt_state : eqx.Module / PyTree
-        Model and optimiser state.
-    epoch, global_step : int
-        Training position.
-    key : jax.Array
-        PRNG key state.
+    model : eqx.Module
+        Model whose weights should be saved.
+    opt_state, epoch, global_step, key : ignored
+        Accepted for API symmetry with the training loop's call sites.
     """
-    _makedirs(path)
-    bundle = (
-        model,
-        opt_state,
-        np.asarray(epoch),
-        np.asarray(global_step),
-        key,
-    )
-    with open(path, "wb") as f:
-        eqx.tree_serialise_leaves(f, bundle)
+    save_model(model, path)
 
 
 def load_checkpoint(
@@ -403,35 +395,34 @@ def load_checkpoint(
     opt_like,
     key_like: jax.Array,
 ):
-    """Load a checkpoint saved by ``save_checkpoint``.
+    """Load model weights saved by ``save_checkpoint``.
+
+    Returns the same 5-tuple shape as before so the training-loop's
+    resume code doesn't need to change, but only the model weights are
+    actually restored: the ``opt_state`` and ``key`` come back as the
+    pristine templates that were passed in, and ``epoch`` /
+    ``global_step`` are reset to 0.
 
     Parameters
     ----------
     path : str
-        Path to the checkpoint file.
-    model_like, opt_like, key_like : PyTree
-        Structural templates matching the saved ones. The model and
-        opt-state must be freshly constructed (with any key) so the
-        deserialiser knows what shapes to expect.
+        Checkpoint file path.
+    model_like : eqx.Module
+        Freshly-constructed model with the right architecture; weights
+        will be replaced with the saved values.
+    opt_like : PyTree
+        Optimiser state template; returned unchanged.
+    key_like : jax.Array
+        PRNG key template; returned unchanged.
 
     Returns
     -------
     model, opt_state, epoch, global_step, key
-        Restored values. ``epoch`` and ``global_step`` are returned as
-        Python ints.
+        ``model`` is the loaded weights. The remaining fields are pristine
+        templates / zeros so the training loop restarts cleanly.
     """
-    bundle_like = (
-        model_like,
-        opt_like,
-        np.asarray(0),
-        np.asarray(0),
-        key_like,
-    )
-    with open(path, "rb") as f:
-        model, opt_state, epoch, global_step, key = eqx.tree_deserialise_leaves(
-            f, bundle_like
-        )
-    return model, opt_state, int(epoch), int(global_step), key
+    model = load_model(model_like, path)
+    return model, opt_like, 0, 0, key_like
 
 
 def norm(x):
